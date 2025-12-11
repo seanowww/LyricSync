@@ -48,6 +48,9 @@ __pycache__/
 venv/
 .venv/
 
+# Environment Variables
+.env
+
 # Jupyter
 .ipynb_checkpoints/
 
