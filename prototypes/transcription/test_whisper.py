@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 from pathlib import Path
+import json
 
 # Load .env variables
 load_dotenv()
@@ -23,4 +24,23 @@ with open(audio_path, "rb") as audio_file:
         response_format="verbose_json"
     )
 
-print(transcript)
+print("Full transcript text:")
+print(transcript.text)
+print()
+
+# --- Build timing JSON backbone ---
+timing = []
+for seg in transcript.segments:
+    timing.append({
+        "id": seg["id"] if isinstance(seg, dict) else seg.id,
+        "start": seg["start"] if isinstance(seg, dict) else seg.start,
+        "end": seg["end"] if isinstance(seg, dict) else seg.end,
+        "text": (seg["text"] if isinstance(seg, dict) else seg.text).strip(),
+    })
+
+# Save to file
+timing_path = BASE_DIR / "timing.json"
+with open(timing_path, "w") as f:
+    json.dump(timing, f, indent=2)
+
+print(f"Saved {len(timing)} segments to {timing_path}")
