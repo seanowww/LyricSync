@@ -30,10 +30,16 @@ app.add_middleware(
     allow_headers=["*"],    # allow Content-Type, Authorization, etc.
 )
 
-UPLOAD_DIR = Path("src/storage/uploads")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-TMP_DIR = Path("src/storage/tmp")
-OUTPUT_DIR = Path("src/storage/outputs")
+BASE_DIR = Path(__file__).resolve().parent  # src/
+
+STORAGE_DIR = BASE_DIR / "storage"
+
+UPLOAD_DIR = STORAGE_DIR / "uploads"
+TMP_DIR = STORAGE_DIR / "tmp"
+OUTPUT_DIR = STORAGE_DIR / "outputs"
+
+for d in (UPLOAD_DIR, TMP_DIR, OUTPUT_DIR):
+    d.mkdir(parents=True, exist_ok=True)
 
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB for MVP
 
