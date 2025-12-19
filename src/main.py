@@ -69,3 +69,19 @@ async def transcribe(file: UploadFile = File(...)):
         "video_id": video_id,
         "segments": segments
     })
+
+@app.get("/api/video/{video_id}")
+async def get_video(video_id: str):
+    # Find the uploaded file regardless of extension (mp4/mov/webm/etc.)
+    matches = list(UPLOAD_DIR.glob(f"{video_id}.*"))
+    if not matches:
+        raise HTTPException(status_code=404, detail=f"Video not found: {video_id}")
+
+    video_path = matches[0]  # MVP: assume one match
+
+    # Stream the file back to the client
+    return FileResponse(
+        path=str(video_path),
+        media_type="video/mp4",   # MVP: okay; optional improvement below
+        filename=video_path.name
+    )
