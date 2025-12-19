@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LyricSync – Preview</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; }
+    .row { display: grid; grid-template-columns: 44px 110px 110px 1fr; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .row input[type="number"] { width: 100%; }
+    .row input[type="text"] { width: 100%; }
+    .controls { display: flex; gap: 8px; align-items: center; margin: 12px 0; flex-wrap: wrap; }
+    .status { margin-top: 8px; color: #333; }
+    .error { color: #b00020; }
+    .segments { margin-top: 16px; }
+    button { padding: 8px 12px; cursor: pointer; }
+    video { width: min(900px, 100%); display: block; margin-top: 12px; background: #000; }
+    .meta { color: #666; font-size: 14px; }
+  </style>
+</head>
+
+<body>
+  <h1>LyricSync – Preview</h1>
+  <div class="meta">Edit timing + text, save to backend, then burn subtitles.</div>
+
+  <div class="controls">
+    <label>
+      Style:
+      <select id="style">
+        <option value="default">default</option>
+        <option value="karaoke">karaoke</option>
+        <option value="minimal">minimal</option>
+      </select>
+    </label>
+
+    <button id="saveBtn">Save</button>
+    <button id="burnBtn">Burn MP4</button>
+  </div>
+
+  <div id="status" class="status"></div>
+
+  <video id="video" controls></video>
+
+  <h2>Segments</h2>
+  <div id="segments" class="segments"></div>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const segmentsEl = document.getElementById("segments");
+    const videoEl = document.getElementById("video");
+    const saveBtn = document.getElementById("saveBtn");
+    const burnBtn = document.getElementById("burnBtn");
+    const styleEl = document.getElementById("style");
+
+    const params = new URLSearchParams(window.location.search);
+    const videoId = params.get("video_id");
+
+    let segments = [];
+
+    function setStatus(msg, isError = false) {
+      statusEl.textContent = msg;
+      statusEl.className = "status" + (isError ? " error" : "");
+    }
+
+    function formatNum(n) {
+      // Keep UI clean; don’t over-round
+      if (typeof n !== "number") return n;
+      return Math.round(n * 100) / 100;
+    }
+
+    function renderSegments() {
+      segmentsEl.innerHTML = "";
+
+      segments.forEach((seg, idx) => {
+        const row = document.createElement("div");
+        row.className = "row";
+
+        // Play button
+        const playBtn = document.createElement("button");
+        playBtn.textContent = "▶";
+        playBtn.title = "Jump to segment";
+        playBtn.addEventListener("click", () => {
+          const t = Number(seg.start) || 0;
+          videoEl.currentTime = Math.max(0, t);
+          videoEl.play().catch(() => {});
+        });
+
+        // Start input
+        const startInput = document.createElement("input");
+        startInput.type = "number";
+        startInput.step = "0.01";
+        startInput.value = formatNum(Number(seg.start) || 0);
+        startInput.addEventListener("input", (e) => {
+          segments[idx].start = Number(e.target.value);
+        });
+
+        // End input
+        const endInput = document.createElement("input");
+        endInput.type = "number";
+        endInput.step = "0.01";
+        endInput.value = formatNum(Number(seg.end) || 0);
+        endInput.addEventListener("input", (e) => {
+          segments[idx].end = Number(e.target.value);
+        });
+
+        // Text input
+        const textInput = document.createElement("input");
+        textInput.type = "text";
+        textInput.value = seg.text ?? "";
+        textInput.addEventListener("input", (e) => {
+          segments[idx].text = e.target.value;
+        });
+
+        row.appendChild(playBtn);
+        row.appendChild(startInput);
+        row.appendChild(endInput);
+        row.appendChild(textInput);
+
+        segmentsEl.appendChild(row);
+      });
+    }
+
+    async function loadInitialData() {
+      if (!videoId) {
+        setStatus("Missing video_id in URL. Go back and upload again.", true);
+        saveBtn.disabled = true;
+        burnBtn.disabled = true;
+        return;
+      }
+
+      // Load video stream
+      videoEl.src = `/api/video/${encodeURIComponent(videoId)}`;
+
+      // Load segments from backend
+      setStatus("Loading segments...");
+      try {
+        const res = await fetch(`/api/segments/${encodeURIComponent(videoId)}`);
+        if (!res.ok) {
+          const msg = await res.text().catch(() => res.statusText);
+          setStatus(`Failed to load segments (${res.status}): ${msg}`, true);
+          return;
+        }
+        const data = await res.json();
+        segments = data.segments || [];
+        renderSegments();
+        setStatus(`Loaded ${segments.length} segments.`);
+      } catch (err) {
+        setStatus("Request failed: " + err.message, true);
+      }
+    }
+
+    async function saveSegments() {
+      setStatus("Saving...");
+      saveBtn.disabled = true;
+      try {
+        const res = await fetch(`/api/segments/${encodeURIComponent(videoId)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ segments })
+        });
+
+        if (!res.ok) {
+          const msg = await res.text().catch(() => res.statusText);
+          setStatus(`Save failed (${res.status}): ${msg}`, true);
+          return false;
+        }
+
+        setStatus("Saved ✅");
+        return true;
+      } catch (err) {
+        setStatus("Save request failed: " + err.message, true);
+        return false;
+      } finally {
+        saveBtn.disabled = false;
+      }
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    async function burnVideo() {
+      // Safer MVP flow: save first, then burn
+      const ok = await saveSegments();
+      if (!ok) return;
+
+      setStatus("Burning subtitles (this may take a bit)...");
+      burnBtn.disabled = true;
+
+      try {
+        const payload = {
+          video_id: videoId,
+          segments: segments, // now saved + current
+          style: { preset: styleEl.value }
+        };
+
+        const res = await fetch("/api/burn", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          const msg = await res.text().catch(() => res.statusText);
+          setStatus(`Burn failed (${res.status}): ${msg}`, true);
+          return;
+        }
+
+        const blob = await res.blob();
+        downloadBlob(blob, `lyricsync_${videoId}.mp4`);
+        setStatus("Burn complete ✅ Download started.");
+      } catch (err) {
+        setStatus("Burn request failed: " + err.message, true);
+      } finally {
+        burnBtn.disabled = false;
+      }
+    }
+
+    saveBtn.addEventListener("click", saveSegments);
+    burnBtn.addEventListener("click", burnVideo);
+
+    loadInitialData();
+  </script>
+</body>
+</html>

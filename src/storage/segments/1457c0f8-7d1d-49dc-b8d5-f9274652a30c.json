@@ -1,0 +1,32 @@
+{
+  "video_id": "1457c0f8-7d1d-49dc-b8d5-f9274652a30c",
+  "source": "whisper_verbose_json",
+  "updated_at": "2025-12-19T13:31:48.939500",
+  "segments": [
+    {
+      "id": 0,
+      "start": 0.0,
+      "end": 4.0,
+      "text": "The weather outside is frightful"
+    },
+    {
+      "id": 1,
+      "start": 4.0,
+      "end": 9.0,
+      "text": "But the fire is so delightful"
+    },
+    {
+      "id": 2,
+      "start": 9.0,
+      "end": 13.0,
+      "text": "And since we've no place to go"
+    },
+    {
+      "id": 3,
+      "start": 13.0,
+      "end": 17.0,
+      "text": "Let it snow, let it snow, let it snow"
+    }
+  ],
+  "created_at": "2025-12-19T13:31:48.939500"
+}

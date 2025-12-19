@@ -4,8 +4,12 @@ from fastapi import HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from src.schemas import BurnRequest
+from src.schemas import BurnRequest, SegmentsUpdateRequest
 from pathlib import Path
+from src.services.segments_store import load_segments, save_segments
+from typing import Any, Dict, List
+from fastapi.staticfiles import StaticFiles
+
 import shutil
 import uuid
 import subprocess
@@ -17,10 +21,19 @@ from .timing_pipeline import generate_timing_segments
 
 app = FastAPI()
 
-origins = [
-    "http://localhost:5500",
-    "http://127.0.0.1:5500",
-]
+STATIC_DIR = Path("src/static")
+
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+@app.get("/")
+async def serve_index():
+    return FileResponse(str(STATIC_DIR / "index.html"))
+
+@app.get("/preview")
+async def serve_preview():
+    return FileResponse(str(STATIC_DIR / "preview.html"))
+
+origins = ["http://localhost:8000", "http://127.0.0.1:8000"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,8 +45,11 @@ app.add_middleware(
 
 BASE_DIR = Path(__file__).resolve().parent  # src/
 
+SERVICES_DIR = BASE_DIR / "services"
+
 STORAGE_DIR = BASE_DIR / "storage"
 
+SEGMENTS_DIR = STORAGE_DIR / "segments"
 UPLOAD_DIR = STORAGE_DIR / "uploads"
 TMP_DIR = STORAGE_DIR / "tmp"
 OUTPUT_DIR = STORAGE_DIR / "outputs"
@@ -56,7 +72,6 @@ def copy_with_limit(src, dst, max_bytes: int):
         if total > max_bytes:
             raise HTTPException(status_code=413, detail="File too large for MVP limit.")
         dst.write(chunk)
-
 
 
 # User posts video file
@@ -89,6 +104,7 @@ async def transcribe(file: UploadFile = File(...)):
     # Generate timing segments (this function must handle video -> audio extraction internally)
     try:
         segments = generate_timing_segments(str(saved_path))
+        save_segments(video_id, segments, source="whisper_verbose_json")
     except Exception as e:
         # Clean up the saved upload if transcription fails
         try:
@@ -130,6 +146,21 @@ async def get_video(video_id: str):
         media_type="video/mp4",   # MVP: okay; optional improvement below
         filename=video_path.name
     )
+
+@app.get("/api/segments/{video_id}")
+async def get_segments(video_id: str):
+    try:
+        payload = load_segments(video_id)  # returns dict with video_id, segments, etc.
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Segments not found: {video_id}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load segments: {e}")
+
+    # Return only what the frontend needs
+    return JSONResponse(content={
+        "video_id": payload["video_id"],
+        "segments": payload["segments"],
+    })
 
 def _format_srt_timestamp(seconds: float) -> str:
     """
@@ -241,3 +272,67 @@ async def burn_video(payload: BurnRequest):
         media_type="video/mp4",
         filename=output_path.name
     )
+
+def _validate_segments_mvp(segments: List[Dict[str, Any]]) -> None:
+    """
+    MVP validation:
+    - must be a list
+    - each segment must have: start, end, text
+    - start/end must be numbers, start < end
+    - text must be a string
+    """
+    if not isinstance(segments, list):
+        raise HTTPException(status_code=422, detail="segments must be a list")
+
+    for i, seg in enumerate(segments):
+        if not isinstance(seg, dict):
+            raise HTTPException(status_code=422, detail=f"segments[{i}] must be an object")
+
+        for key in ("start", "end", "text"):
+            if key not in seg:
+                raise HTTPException(status_code=422, detail=f"segments[{i}] missing '{key}'")
+
+        start = seg["start"]
+        end = seg["end"]
+        text = seg["text"]
+
+        if not isinstance(start, (int, float)) or not isinstance(end, (int, float)):
+            raise HTTPException(status_code=422, detail=f"segments[{i}] start/end must be numbers")
+
+        if start < 0 or end < 0 or start >= end:
+            raise HTTPException(status_code=422, detail=f"segments[{i}] must satisfy 0 <= start < end")
+
+        if not isinstance(text, str):
+            raise HTTPException(status_code=422, detail=f"segments[{i}] text must be a string")
+
+
+@app.put("/api/segments/{video_id}")
+async def update_segments(video_id: str, body: SegmentsUpdateRequest):
+    # 1) Ensure this video_id exists (segments were generated before)
+    try:
+        _ = load_segments(video_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Segments not found: {video_id}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load existing segments: {e}")
+
+    # 2) Validate incoming segments
+    try:
+        _validate_segments_mvp(body.segments)
+    except HTTPException:
+        # Pass through our validation messages
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected validation error: {e}")
+
+    # 3) Save
+    try:
+        save_segments(video_id, body.segments, source="manual_edit")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save segments: {e}")
+
+    # 4) Respond (return latest)
+    return JSONResponse(content={
+        "video_id": video_id,
+        "segments": body.segments
+    })

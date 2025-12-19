@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import List, Optional
+from pydantic import BaseModel, Field
+from typing import Any, Dict, List, Optional
 
 class Segment(BaseModel):
     id: int
@@ -7,7 +7,13 @@ class Segment(BaseModel):
     end: float
     text: str
 
+class SegmentsUpdateRequest(BaseModel):
+    segments: List[Dict[str, Any]] = Field(..., description="List of segment objects")
+
 class Style(BaseModel):
+    preset: Optional[str] = "default"
+
+    # existing fields (future)
     x: Optional[float] = None
     y: Optional[float] = None
     fontSize: Optional[int] = None

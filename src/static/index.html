@@ -45,25 +45,33 @@
         formData.append("file", file);
 
         try {
-          const response = await fetch("http://localhost:8000/api/transcribe", {
+          const response = await fetch("/api/transcribe", {
             method: "POST",
             body: formData,
           });
 
-          if (!response.ok) {
-            statusEl.textContent = "Server error: " + response.statusText;
-            return;
-          }
-
-          const data = await response.json();
-          const segments = data.segments || data; // handle both shapes
-
-          statusEl.textContent = `Got ${segments.length} segments`;
-          
-          resultsEl.textContent = JSON.stringify(segments, null, 2);
-        } catch (err) {
-          statusEl.textContent = "Request failed: " + err.message;
+        if (!response.ok) {
+          const msg = await response.text().catch(() => response.statusText);
+          statusEl.textContent = `Server error (${response.status}): ${msg}`;
+          return;
         }
+
+        const data = await response.json();
+        const videoId = data.video_id;
+
+        if (!videoId) {
+          statusEl.textContent = "Unexpected response: missing video_id";
+          return;
+        }
+
+        statusEl.textContent = "Upload complete. Redirecting to preview...";
+
+        window.location.href = `/preview?video_id=${encodeURIComponent(videoId)}`;
+        return;
+
+      } catch (err) {
+        statusEl.textContent = "Request failed: " + err.message;
+      }
       });
     </script>
   </body>
