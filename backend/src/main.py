@@ -8,8 +8,6 @@ from src.schemas import BurnRequest, SegmentsUpdateRequest
 from pathlib import Path
 from src.services.segments_store import load_segments, save_segments
 from typing import Any, Dict, List
-from fastapi.staticfiles import StaticFiles
-
 import logging
 import uuid
 import subprocess
@@ -24,19 +22,15 @@ from .timing_pipeline import generate_timing_segments
 
 app = FastAPI()
 
-STATIC_DIR = Path("src/static")
-
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-
-@app.get("/")
-async def serve_index():
-    return FileResponse(str(STATIC_DIR / "index.html"))
-
-@app.get("/preview")
-async def serve_preview():
-    return FileResponse(str(STATIC_DIR / "preview.html"))
-
-origins = ["http://localhost:8000", "http://127.0.0.1:8000"]
+# CORS: Allow requests from Vite dev server (typically port 5173) and any localhost port
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
 
 app.add_middleware(
     CORSMiddleware,
