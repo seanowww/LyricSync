@@ -10,10 +10,13 @@ from src.services.segments_store import load_segments, save_segments
 from typing import Any, Dict, List
 from fastapi.staticfiles import StaticFiles
 
-import shutil
+import logging
 import uuid
 import subprocess
-import shlex
+import json
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("lyricsync")
 
 load_dotenv()
 
@@ -45,6 +48,8 @@ app.add_middleware(
 
 BASE_DIR = Path(__file__).resolve().parent  # src/
 
+FONTS_DIR = BASE_DIR / "assets" / "fonts"  # src/assets/fonts
+
 SERVICES_DIR = BASE_DIR / "services"
 
 STORAGE_DIR = BASE_DIR / "storage"
@@ -54,12 +59,14 @@ UPLOAD_DIR = STORAGE_DIR / "uploads"
 TMP_DIR = STORAGE_DIR / "tmp"
 OUTPUT_DIR = STORAGE_DIR / "outputs"
 
-for d in (UPLOAD_DIR, TMP_DIR, OUTPUT_DIR):
+for d in (UPLOAD_DIR, TMP_DIR, OUTPUT_DIR, FONTS_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB for MVP
 
 ALLOWED_EXTS = {".mp4", ".mov", ".m4a", ".mp3", ".wav", ".webm"}
+
+# Helpers
 
 def copy_with_limit(src, dst, max_bytes: int):
     total = 0
@@ -73,6 +80,146 @@ def copy_with_limit(src, dst, max_bytes: int):
             raise HTTPException(status_code=413, detail="File too large for MVP limit.")
         dst.write(chunk)
 
+def _find_uploaded_video(video_id: str) -> Path:
+    """
+    Locate the uploaded file regardless of extension, because uploads may be .mp4/.mov/.webm etc.
+    """
+    matches = list(UPLOAD_DIR.glob(f"{video_id}.*"))
+    if not matches:
+        raise HTTPException(status_code=404, detail=f"Video not found for video_id={video_id}")
+    return matches[0]
+
+def _probe_video_resolution(path: Path) -> tuple[int, int]:
+    cmd = [
+        "ffprobe", "-v", "error",
+        "-select_streams", "v:0",
+        "-show_entries", "stream=width,height",
+        "-of", "json",
+        str(path),
+    ]
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if result.returncode != 0:
+        raise HTTPException(status_code=500, detail=f"ffprobe failed: {result.stderr[-500:]}")
+    data = json.loads(result.stdout)
+    stream = data["streams"][0]
+    return int(stream["width"]), int(stream["height"])
+
+
+def _format_ass_timestamp(seconds: float) -> str:
+    if seconds < 0:
+        seconds = 0.0
+    cs_total = int(round(seconds * 100))  # centiseconds
+    cs = cs_total % 100
+    total_s = cs_total // 100
+    s = total_s % 60
+    total_m = total_s // 60
+    m = total_m % 60
+    h = total_m // 60
+    return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
+
+
+def _escape_ass_text(text: str) -> str:
+    text = (text or "").replace("\r", "")
+    text = text.replace("\n", r"\N")
+    text = text.replace("{", r"\{").replace("}", r"\}")
+    return text
+
+
+def _css_hex_to_ass(hex_color: str) -> str:
+    # "#RRGGBB" -> "&H00BBGGRR" (alpha 00 = opaque)
+    c = (hex_color or "#FFFFFF").lstrip("#")
+    if len(c) != 6:
+        c = "FFFFFF"
+    rr, gg, bb = c[0:2], c[2:4], c[4:6]
+    return f"&H00{bb}{gg}{rr}"
+
+
+def _align_to_ass(align: str) -> int:
+    # MVP: only bottom-center is supported
+    return 2  # bottom-center
+
+
+def _segments_to_ass(segments, style, play_res_x: int, play_res_y: int) -> str:
+    # Defaults if style is None
+    font = style.fontFamily if style else "Inter"
+    size = style.fontSizePx if style else 28
+    primary = _css_hex_to_ass(style.color) if style else "&H00FFFFFF"
+
+    # Keep strokeColor simple for MVP: if it's hex, convert; else default black.
+    outline_color = "&H00000000"
+    if style and style.strokeColor and style.strokeColor.startswith("#"):
+        outline_color = _css_hex_to_ass(style.strokeColor)
+
+    outline = style.strokePx if style else 3
+    shadow = style.shadowPx if style else 0
+    alignment = _align_to_ass(style.align) if style else 2
+    margin_v = style.marginBottomPx if style else 48
+
+    header = f"""[Script Info]
+ScriptType: v4.00+
+PlayResX: {play_res_x}
+PlayResY: {play_res_y}
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,{font},{size},{primary},&H000000FF,{outline_color},&H64000000,0,0,0,0,100,100,0,0,1,{outline},{shadow},{alignment},20,20,{margin_v},1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+"""
+
+    lines = [header]
+    any_text = False
+
+    for seg in segments:
+        start = _format_ass_timestamp(seg.start)
+        end = _format_ass_timestamp(seg.end)
+        text = _escape_ass_text(seg.text).strip()
+        if not text:
+            continue
+        any_text = True
+        lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text}\n")
+
+    if not any_text:
+        raise HTTPException(status_code=400, detail="No non-empty segments to burn.")
+
+    return "".join(lines)
+
+def _validate_segments_mvp(segments: List[Dict[str, Any]]) -> None:
+    """
+    MVP validation:
+    - must be a list
+    - each segment must have: start, end, text
+    - start/end must be numbers, start < end
+    - text must be a string
+    """
+    if not isinstance(segments, list):
+        raise HTTPException(status_code=422, detail="segments must be a list")
+
+    for i, seg in enumerate(segments):
+        if not isinstance(seg, dict):
+            raise HTTPException(status_code=422, detail=f"segments[{i}] must be an object")
+
+        for key in ("start", "end", "text"):
+            if key not in seg:
+                raise HTTPException(status_code=422, detail=f"segments[{i}] missing '{key}'")
+
+        start = seg["start"]
+        end = seg["end"]
+        text = seg["text"]
+
+        if not isinstance(start, (int, float)) or not isinstance(end, (int, float)):
+            raise HTTPException(status_code=422, detail=f"segments[{i}] start/end must be numbers")
+
+        if start < 0 or end < 0 or start >= end:
+            raise HTTPException(status_code=422, detail=f"segments[{i}] must satisfy 0 <= start < end")
+
+        if not isinstance(text, str):
+            raise HTTPException(status_code=422, detail=f"segments[{i}] text must be a string")
+        
+# Routing
 
 # User posts video file
 @app.post("/api/transcribe")
@@ -162,82 +309,31 @@ async def get_segments(video_id: str):
         "segments": payload["segments"],
     })
 
-def _format_srt_timestamp(seconds: float) -> str:
-    """
-    Converts seconds (float) -> SRT timestamp 'HH:MM:SS,mmm'
-    Example: 2.3 -> '00:00:02,300'
-    """
-    if seconds < 0:
-        seconds = 0.0
-
-    total_ms = int(round(seconds * 1000))
-    ms = total_ms % 1000
-    total_s = total_ms // 1000
-    s = total_s % 60
-    total_m = total_s // 60
-    m = total_m % 60
-    h = total_m // 60
-
-    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
-
-
-def _segments_to_srt(segments) -> str:
-    """
-    Convert list of {id,start,end,text} into SRT file content.
-    Important: SRT expects entries numbered from 1..N (not necessarily your segment.id).
-    """
-    lines = []
-    for i, seg in enumerate(segments, start=1):
-        start_ts = _format_srt_timestamp(seg.start)
-        end_ts = _format_srt_timestamp(seg.end)
-
-        # Minimal sanitation: strip whitespace; avoid empty captions
-        text = (seg.text or "").strip()
-        if not text:
-            continue
-
-        lines.append(str(i))
-        lines.append(f"{start_ts} --> {end_ts}")
-        lines.append(text)
-        lines.append("")  # blank line between cues
-
-    if not lines:
-        raise HTTPException(status_code=400, detail="No non-empty segments to burn.")
-
-    return "\n".join(lines)
-
-
-def _find_uploaded_video(video_id: str) -> Path:
-    """
-    Locate the uploaded file regardless of extension, because uploads may be .mp4/.mov/.webm etc.
-    """
-    matches = list(UPLOAD_DIR.glob(f"{video_id}.*"))
-    if not matches:
-        raise HTTPException(status_code=404, detail=f"Video not found for video_id={video_id}")
-    return matches[0]
-
-
 @app.post("/api/burn")
 async def burn_video(payload: BurnRequest):
-
-    # 1) Locate the previously uploaded video
     input_path = _find_uploaded_video(payload.video_id)
 
-    # 2) Generate SRT from segments and write it to a temp file
-    srt_text = _segments_to_srt(payload.segments)
-    srt_path = TMP_DIR / f"{payload.video_id}.srt"
-    srt_path.write_text(srt_text, encoding="utf-8")
+    # PlayRes must match the video resolution to sync with frontend “video px”
+    play_res_x, play_res_y = _probe_video_resolution(input_path)
 
-    # 3) Choose output path
+    ass_text = _segments_to_ass(payload.segments, payload.style, play_res_x, play_res_y)
+    ass_path = TMP_DIR / f"{payload.video_id}.ass"
+    ass_path.write_text(ass_text, encoding="utf-8")
+
+    logger.info("burn_start video_id=%s", payload.video_id)
+    logger.info("burn_style=%s", payload.style.model_dump() if payload.style else None)
+    logger.info("burn_res=%sx%s", play_res_x, play_res_y)
+    logger.info("burn_ass_path=%s", str(ass_path))
+
     output_path = OUTPUT_DIR / f"{payload.video_id}_burned.mp4"
 
-    # 4) Run FFmpeg
+    vf = f"subtitles={str(ass_path)}:fontsdir={str(FONTS_DIR)}"
+
     ffmpeg_cmd = [
-        "ffmpeg",
-        "-y",  # overwrite output if exists
+        "ffmpeg", "-y",
         "-i", str(input_path),
-        "-vf", f"subtitles={str(srt_path)}",
-        "-c:a", "copy",  # keep original audio without re-encoding
+        "-vf", vf,
+        "-c:a", "copy",
         str(output_path),
     ]
 
@@ -249,62 +345,20 @@ async def burn_video(payload: BurnRequest):
             text=True
         )
     except FileNotFoundError:
-        # ffmpeg isn't installed / not on PATH
-        raise HTTPException(
-            status_code=500,
-            detail="FFmpeg not found. Install ffmpeg and ensure it is on PATH."
-        )
+        raise HTTPException(status_code=500, detail="FFmpeg not found. Install ffmpeg and ensure it is on PATH.")
 
     if result.returncode != 0:
-        # Keep stderr short-ish; ffmpeg logs can be huge
         err_tail = result.stderr[-2000:]
-        raise HTTPException(
-            status_code=500,
-            detail=f"FFmpeg failed. stderr tail:\n{err_tail}"
-        )
+        raise HTTPException(status_code=500, detail=f"FFmpeg failed. stderr tail:\n{err_tail}")
 
     if not output_path.exists():
         raise HTTPException(status_code=500, detail="Burn succeeded but output file missing.")
 
-    # 5) Return the rendered video to the client
     return FileResponse(
         path=str(output_path),
-        media_type="video/mp4",
+        media_type="video/*",
         filename=output_path.name
     )
-
-def _validate_segments_mvp(segments: List[Dict[str, Any]]) -> None:
-    """
-    MVP validation:
-    - must be a list
-    - each segment must have: start, end, text
-    - start/end must be numbers, start < end
-    - text must be a string
-    """
-    if not isinstance(segments, list):
-        raise HTTPException(status_code=422, detail="segments must be a list")
-
-    for i, seg in enumerate(segments):
-        if not isinstance(seg, dict):
-            raise HTTPException(status_code=422, detail=f"segments[{i}] must be an object")
-
-        for key in ("start", "end", "text"):
-            if key not in seg:
-                raise HTTPException(status_code=422, detail=f"segments[{i}] missing '{key}'")
-
-        start = seg["start"]
-        end = seg["end"]
-        text = seg["text"]
-
-        if not isinstance(start, (int, float)) or not isinstance(end, (int, float)):
-            raise HTTPException(status_code=422, detail=f"segments[{i}] start/end must be numbers")
-
-        if start < 0 or end < 0 or start >= end:
-            raise HTTPException(status_code=422, detail=f"segments[{i}] must satisfy 0 <= start < end")
-
-        if not isinstance(text, str):
-            raise HTTPException(status_code=422, detail=f"segments[{i}] text must be a string")
-
 
 @app.put("/api/segments/{video_id}")
 async def update_segments(video_id: str, body: SegmentsUpdateRequest):

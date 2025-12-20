@@ -4,18 +4,65 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>LyricSync – Preview</title>
+
+  <!-- Inter for overlay preview (browser-side) -->
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap">
+
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; }
-    .row { display: grid; grid-template-columns: 44px 110px 110px 1fr; gap: 8px; align-items: center; margin-bottom: 8px; }
-    .row input[type="number"] { width: 100%; }
-    .row input[type="text"] { width: 100%; }
-    .controls { display: flex; gap: 8px; align-items: center; margin: 12px 0; flex-wrap: wrap; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin: 24px;
+    }
+
+    .meta { color: #666; font-size: 14px; }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin: 12px 0;
+      flex-wrap: wrap;
+    }
+
+    button { padding: 8px 12px; cursor: pointer; }
+
     .status { margin-top: 8px; color: #333; }
     .error { color: #b00020; }
+
+    /* Video wrapper controls max width; video itself is 100% width */
+    #videoWrap { position: relative; width: min(900px, 100%); margin-top: 12px; }
+    #video { width: 100%; display: block; background: #000; }
+
+    #overlay {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 0 16px;
+      pointer-events: none;
+      white-space: pre-wrap;
+      text-align: center;
+      line-height: 1.15;
+      /* Slightly improve perceived smoothness */
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+
     .segments { margin-top: 16px; }
-    button { padding: 8px 12px; cursor: pointer; }
-    video { width: min(900px, 100%); display: block; margin-top: 12px; background: #000; }
-    .meta { color: #666; font-size: 14px; }
+
+    .row {
+      display: grid;
+      grid-template-columns: 44px 110px 110px 1fr;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .row input[type="number"] { width: 100%; }
+    .row input[type="text"] { width: 100%; }
+
+    .spacer { flex: 1; }
   </style>
 </head>
 
@@ -35,39 +82,184 @@
 
     <button id="saveBtn">Save</button>
     <button id="burnBtn">Burn MP4</button>
+
+    <span class="spacer"></span>
+    <span class="meta" id="debugMeta"></span>
   </div>
 
   <div id="status" class="status"></div>
 
-  <video id="video" controls></video>
+  <div id="videoWrap">
+    <video id="video" controls></video>
+    <div id="overlay"></div>
+  </div>
 
   <h2>Segments</h2>
   <div id="segments" class="segments"></div>
 
   <script>
+    // ============================================================
+    // 1) Shared render spec (frontend overlay + backend burn)
+    //    Treat these as "VIDEO-PIXEL units" (we scale for display).
+    // ============================================================
+    const style = {
+      preset: "default",
+      fontFamily: "Inter",
+      fontSizePx: 28,
+      color: "#FFFFFF",
+      strokePx: 3,
+
+      // IMPORTANT: use hex for easier backend sync (ASS expects hex well)
+      strokeColor: "#000000",
+
+      shadowPx: 0,
+      align: "bottom-center",
+      marginBottomPx: 48,
+      maxWidthPct: 90,
+
+      // Frontend-only tweak: smooth outline by using more samples
+      outlineSamples: 16
+    };
+
+    // ============================================================
+    // 2) DOM refs
+    // ============================================================
     const statusEl = document.getElementById("status");
     const segmentsEl = document.getElementById("segments");
     const videoEl = document.getElementById("video");
+    const overlayEl = document.getElementById("overlay");
+    const debugMetaEl = document.getElementById("debugMeta");
+
     const saveBtn = document.getElementById("saveBtn");
     const burnBtn = document.getElementById("burnBtn");
     const styleEl = document.getElementById("style");
 
+    // ============================================================
+    // 3) State
+    // ============================================================
     const params = new URLSearchParams(window.location.search);
     const videoId = params.get("video_id");
-
     let segments = [];
+    let rafId = null;
 
+    // ============================================================
+    // 4) Helpers
+    // ============================================================
     function setStatus(msg, isError = false) {
       statusEl.textContent = msg;
       statusEl.className = "status" + (isError ? " error" : "");
     }
 
     function formatNum(n) {
-      // Keep UI clean; don’t over-round
       if (typeof n !== "number") return n;
       return Math.round(n * 100) / 100;
     }
 
+    function getActiveCaption(t) {
+      for (const seg of segments) {
+        const start = Number(seg.start);
+        const end = Number(seg.end);
+        if (t >= start && t < end) return seg.text ?? "";
+      }
+      return "";
+    }
+
+    function getVideoScale() {
+      // IMPORTANT: only valid after metadata loaded
+      const vw = videoEl.videoWidth;
+      if (!vw) return null;
+      const rect = videoEl.getBoundingClientRect();
+      return rect.width / vw;
+    }
+
+    function hexToRgba(hex, alpha = 0.85) {
+      const c = (hex || "#000000").replace("#", "");
+      if (c.length !== 6) return `rgba(0,0,0,${alpha})`;
+      const r = parseInt(c.slice(0, 2), 16);
+      const g = parseInt(c.slice(2, 4), 16);
+      const b = parseInt(c.slice(4, 6), 16);
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+
+    // ============================================================
+    // 5) Overlay styling
+    // ============================================================
+    function buildSmoothOutlineShadows(radiusPx, color, samples = 16) {
+      // Use a "circle" of offsets. More samples => smoother outline.
+      const out = [];
+      for (let i = 0; i < samples; i++) {
+        const angle = (i / samples) * Math.PI * 2;
+        const dx = Math.cos(angle) * radiusPx;
+        const dy = Math.sin(angle) * radiusPx;
+        // blur=0 keeps it crisp like ASS Outline
+        out.push(`${dx.toFixed(2)}px ${dy.toFixed(2)}px 0 ${color}`);
+      }
+      return out.join(", ");
+    }
+
+    function applyOverlayStyle() {
+      const scale = getVideoScale();
+      if (scale == null) return; // metadata not ready
+
+      overlayEl.style.fontFamily = `${style.fontFamily}, system-ui, sans-serif`;
+      overlayEl.style.color = style.color;
+
+      // VIDEO px -> display px
+      overlayEl.style.fontSize = (style.fontSizePx * scale) + "px";
+      overlayEl.style.bottom = (style.marginBottomPx * scale) + "px";
+      overlayEl.style.maxWidth = style.maxWidthPct + "%";
+      overlayEl.style.margin = "0 auto";
+
+      // IMPORTANT: Avoid webkitTextStroke (it darkens fill + differs from libass)
+      overlayEl.style.webkitTextStroke = "0px transparent";
+
+      // Smooth outline via multi-shadow
+      // Use fractional radius (don’t round early) to reduce "steppy" look.
+      const radius = Math.max(0, style.strokePx * scale);
+      const outlineColor = hexToRgba(style.strokeColor, 0.85);
+      const outline = buildSmoothOutlineShadows(radius, outlineColor, style.outlineSamples);
+
+      // Optional: tiny ambient shadow (MVP: keep subtle)
+      // If you want the overlay closer to libass, keep blur small.
+      const ambient = style.shadowPx > 0
+        ? `0 ${(style.shadowPx * scale).toFixed(2)}px ${(style.shadowPx * 2 * scale).toFixed(2)}px rgba(0,0,0,0.35)`
+        : "";
+
+      overlayEl.style.textShadow = ambient
+        ? `${outline}, ${ambient}`
+        : outline;
+
+      // Debug UI
+      debugMetaEl.textContent =
+        `intrinsic=${videoEl.videoWidth}x${videoEl.videoHeight} ` +
+        `scale=${scale.toFixed(3)}`;
+    }
+
+    function applyPreset(preset) {
+      style.preset = preset;
+
+      // Keep minimal: tune only what you use now.
+      if (preset === "minimal") {
+        style.fontSizePx = 28;
+        style.strokePx = 3;
+        style.marginBottomPx = 48;
+        style.shadowPx = 0;
+      } else if (preset === "karaoke") {
+        style.fontSizePx = 32;
+        style.strokePx = 4;
+        style.marginBottomPx = 56;
+        style.shadowPx = 0;
+      } else {
+        style.fontSizePx = 28;
+        style.strokePx = 3;
+        style.marginBottomPx = 48;
+        style.shadowPx = 0;
+      }
+    }
+
+    // ============================================================
+    // 6) Segments UI
+    // ============================================================
     function renderSegments() {
       segmentsEl.innerHTML = "";
 
@@ -75,7 +267,6 @@
         const row = document.createElement("div");
         row.className = "row";
 
-        // Play button
         const playBtn = document.createElement("button");
         playBtn.textContent = "▶";
         playBtn.title = "Jump to segment";
@@ -85,7 +276,6 @@
           videoEl.play().catch(() => {});
         });
 
-        // Start input
         const startInput = document.createElement("input");
         startInput.type = "number";
         startInput.step = "0.01";
@@ -94,7 +284,6 @@
           segments[idx].start = Number(e.target.value);
         });
 
-        // End input
         const endInput = document.createElement("input");
         endInput.type = "number";
         endInput.step = "0.01";
@@ -103,7 +292,6 @@
           segments[idx].end = Number(e.target.value);
         });
 
-        // Text input
         const textInput = document.createElement("input");
         textInput.type = "text";
         textInput.value = seg.text ?? "";
@@ -115,11 +303,13 @@
         row.appendChild(startInput);
         row.appendChild(endInput);
         row.appendChild(textInput);
-
         segmentsEl.appendChild(row);
       });
     }
 
+    // ============================================================
+    // 7) API calls
+    // ============================================================
     async function loadInitialData() {
       if (!videoId) {
         setStatus("Missing video_id in URL. Go back and upload again.", true);
@@ -128,10 +318,8 @@
         return;
       }
 
-      // Load video stream
       videoEl.src = `/api/video/${encodeURIComponent(videoId)}`;
 
-      // Load segments from backend
       setStatus("Loading segments...");
       try {
         const res = await fetch(`/api/segments/${encodeURIComponent(videoId)}`);
@@ -152,6 +340,7 @@
     async function saveSegments() {
       setStatus("Saving...");
       saveBtn.disabled = true;
+
       try {
         const res = await fetch(`/api/segments/${encodeURIComponent(videoId)}`, {
           method: "PUT",
@@ -187,7 +376,6 @@
     }
 
     async function burnVideo() {
-      // Safer MVP flow: save first, then burn
       const ok = await saveSegments();
       if (!ok) return;
 
@@ -197,8 +385,8 @@
       try {
         const payload = {
           video_id: videoId,
-          segments: segments, // now saved + current
-          style: { preset: styleEl.value }
+          segments,
+          style
         };
 
         const res = await fetch("/api/burn", {
@@ -223,9 +411,46 @@
       }
     }
 
+    // ============================================================
+    // 8) Overlay update loop (smooth + consistent)
+    // ============================================================
+    function startOverlayLoop() {
+      if (rafId) cancelAnimationFrame(rafId);
+
+      const tick = () => {
+        overlayEl.textContent = getActiveCaption(videoEl.currentTime);
+        rafId = requestAnimationFrame(tick);
+      };
+
+      rafId = requestAnimationFrame(tick);
+    }
+
+    // ============================================================
+    // 9) Events
+    // ============================================================
     saveBtn.addEventListener("click", saveSegments);
     burnBtn.addEventListener("click", burnVideo);
 
+    styleEl.addEventListener("change", () => {
+      applyPreset(styleEl.value);
+      applyOverlayStyle();
+    });
+
+    videoEl.addEventListener("loadedmetadata", () => {
+      // Apply style after metadata, then once more after layout settles
+      applyOverlayStyle();
+      requestAnimationFrame(applyOverlayStyle);
+      startOverlayLoop();
+    });
+
+    videoEl.addEventListener("play", applyOverlayStyle);
+    window.addEventListener("resize", () => {
+      applyOverlayStyle();
+      requestAnimationFrame(applyOverlayStyle);
+    });
+
+    // Init
+    applyPreset(styleEl.value);
     loadInitialData();
   </script>
 </body>
