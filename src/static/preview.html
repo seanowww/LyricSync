@@ -102,6 +102,12 @@
     // 1) Shared render spec (frontend overlay + backend burn)
     //    Treat these as "VIDEO-PIXEL units" (we scale for display).
     // ============================================================
+    const CAL = {
+      font: 0.90,
+      outline: 1.00,
+      margin: 1.00,
+    };
+
     const style = {
       preset: "default",
       fontFamily: "Inter",
@@ -155,6 +161,14 @@
       return Math.round(n * 100) / 100;
     }
 
+    function hasOverlap(segs) {
+      const s = [...segs].sort((a,b) => a.start - b.start);
+      for (let i = 1; i < s.length; i++) {
+        if (Number(s[i].start) < Number(s[i-1].end)) return true;
+      }
+      return false;
+    }
+
     function getActiveCaption(t) {
       for (const seg of segments) {
         const start = Number(seg.start);
@@ -205,17 +219,18 @@
       overlayEl.style.color = style.color;
 
       // VIDEO px -> display px
-      overlayEl.style.fontSize = (style.fontSizePx * scale) + "px";
-      overlayEl.style.bottom = (style.marginBottomPx * scale) + "px";
+      overlayEl.style.fontSize = (style.fontSizePx * scale * CAL.font) + "px";
+      overlayEl.style.bottom = (style.marginBottomPx * scale * CAL.margin) + "px";
       overlayEl.style.maxWidth = style.maxWidthPct + "%";
       overlayEl.style.margin = "0 auto";
 
-      // IMPORTANT: Avoid webkitTextStroke (it darkens fill + differs from libass)
+      // Avoid webkitTextStroke (it darkens fill + differs from libass
       overlayEl.style.webkitTextStroke = "0px transparent";
 
-      // Smooth outline via multi-shadow
       // Use fractional radius (don’t round early) to reduce "steppy" look.
-      const radius = Math.max(0, style.strokePx * scale);
+      const radius = Math.max(0, style.strokePx * scale * CAL.outline);
+
+      // Smooth outline via multi-shadow
       const outlineColor = hexToRgba(style.strokeColor, 0.85);
       const outline = buildSmoothOutlineShadows(radius, outlineColor, style.outlineSamples);
 
@@ -340,6 +355,11 @@
     async function saveSegments() {
       setStatus("Saving...");
       saveBtn.disabled = true;
+
+      if (hasOverlap(segments)) {
+        setStatus("Save failed: overlapping segments not supported yet. Adjust timings so they don't overlap.", true);
+        return false;
+      }
 
       try {
         const res = await fetch(`/api/segments/${encodeURIComponent(videoId)}`, {
