@@ -140,21 +140,55 @@ def _align_to_ass(align: str) -> int:
 
 
 def _segments_to_ass(segments, style, play_res_x: int, play_res_y: int) -> str:
-    # Defaults if style is None
-    font = style.fontFamily if style else "Inter"
-    size = style.fontSizePx if style else 28
-    primary = _css_hex_to_ass(style.color) if style else "&H00FFFFFF"
+    """
+    Build an .ass subtitle file.
+    MVP sync rules:
+    - Frontend drags (posX,posY) in VIDEO pixels.
+    - Backend must burn at the same absolute position using ASS override tags:
+        {\an2\pos(x,y)}  # bottom-center anchored at (x,y)
+    - We no longer rely on MarginV (marginBottomPx removed).
+    """
 
-    # Keep strokeColor simple for MVP: if it's hex, convert; else default black.
-    outline_color = "&H00000000"
+    # ---- 1) Style defaults ----
+    font = style.fontFamily if style and style.fontFamily else "Inter"
+    size = style.fontSizePx if style and style.fontSizePx else 28
+    primary = _css_hex_to_ass(style.color) if style and style.color else "&H00FFFFFF"
+
+    # Outline color: only accept hex (your frontend now sends hex like "#000000")
+    outline_color = "&H00000000"  # black
     if style and style.strokeColor and style.strokeColor.startswith("#"):
         outline_color = _css_hex_to_ass(style.strokeColor)
 
-    outline = style.strokePx if style else 3
-    shadow = style.shadowPx if style else 0
-    alignment = _align_to_ass(style.align) if style else 2
-    margin_v = style.marginBottomPx if style else 48
+    outline = style.strokePx if style and style.strokePx is not None else 3
+    shadow = style.shadowPx if style and style.shadowPx is not None else 0
 
+    # We still keep alignment=2 in the style as a default (bottom-center),
+    # BUT the real placement is done by \an2 + \pos(...) per Dialogue line.
+    alignment = 2
+    margin_v = 0  # not used if we always apply \pos()
+
+    # ---- 2) Position defaults (match your frontend defaults) ----
+    # Frontend: defaultX = vw/2, defaultY = vh*0.88
+    if style and style.posX is not None:
+        x = int(round(float(style.posX)))
+    else:
+        x = play_res_x // 2
+
+    if style and style.posY is not None:
+        y = int(round(float(style.posY)))
+    else:
+        y = int(round(play_res_y * 0.88))
+
+    # Clamp just in case user drags outside bounds
+    x = max(0, min(play_res_x, x))
+    y = max(0, min(play_res_y, y))
+
+    # ASS override tag:
+    # \an2 = bottom-center anchor (matches frontend translate(-50%,-100%))
+    # \pos(x,y) = absolute position in PlayRes coordinates
+    pos_tag = f"{{\\an2\\pos({x},{y})}}"
+
+    # ---- 3) Header ----
     header = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: {play_res_x}
@@ -170,6 +204,7 @@ Style: Default,{font},{size},{primary},&H000000FF,{outline_color},&H64000000,0,0
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
 
+    # ---- 4) Dialogue lines ----
     lines = [header]
     any_text = False
 
@@ -179,13 +214,18 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         text = _escape_ass_text(seg.text).strip()
         if not text:
             continue
+
         any_text = True
-        lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text}\n")
+
+        # Inject the position tag at the start of the line text.
+        # IMPORTANT: we include the tag per-line to guarantee sync with drag position.
+        lines.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{pos_tag}{text}\n")
 
     if not any_text:
         raise HTTPException(status_code=400, detail="No non-empty segments to burn.")
 
     return "".join(lines)
+
 
 def _validate_segments_mvp(segments: List[Dict[str, Any]]) -> None:
     """

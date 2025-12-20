@@ -22,7 +22,10 @@ class Style(BaseModel):
     strokeColor: str = "rgba(0,0,0,0.85)"
     shadowPx: int = 0                 # keep 0 for now
     align: str = "bottom-center"      # constrain to known set
-    marginBottomPx: int = 48
+
+    posX: Optional[float] = None
+    posY: Optional[float] = None
+
     maxWidthPct: int = 90             # wrapping width in preview
 
 

@@ -37,17 +37,25 @@
     #overlay {
       position: absolute;
       left: 0;
-      right: 0;
-      bottom: 0;
+      top: 0;
+      /* moved via JS to (posX,posY) with transform */
       padding: 0 16px;
-      pointer-events: none;
+
+      /* MUST be interactive for drag */
+      pointer-events: auto;
+      cursor: grab;
+      user-select: none;
+
       white-space: pre-wrap;
       text-align: center;
       line-height: 1.15;
+
       /* Slightly improve perceived smoothness */
       -webkit-font-smoothing: antialiased;
       text-rendering: geometricPrecision;
     }
+
+    #overlay.dragging { cursor: grabbing; }
 
     .segments { margin-top: 16px; }
 
@@ -68,7 +76,7 @@
 
 <body>
   <h1>LyricSync – Preview</h1>
-  <div class="meta">Edit timing + text, save to backend, then burn subtitles.</div>
+  <div class="meta">Edit timing + text, drag the overlay to position it, save to backend, then burn.</div>
 
   <div class="controls">
     <label>
@@ -115,15 +123,18 @@
       color: "#FFFFFF",
       strokePx: 3,
 
-      // IMPORTANT: use hex for easier backend sync (ASS expects hex well)
+      // Use HEX for backend sync
       strokeColor: "#000000",
 
       shadowPx: 0,
       align: "bottom-center",
-      marginBottomPx: 48,
       maxWidthPct: 90,
 
-      // Frontend-only tweak: smooth outline by using more samples
+      // Single source of truth for position (VIDEO px)
+      posX: null,
+      posY: null,
+
+      // Frontend-only outline smoothness
       outlineSamples: 16
     };
 
@@ -148,6 +159,9 @@
     let segments = [];
     let rafId = null;
 
+    let dragging = false;
+    let dragStart = null;
+
     // ============================================================
     // 4) Helpers
     // ============================================================
@@ -161,8 +175,12 @@
       return Math.round(n * 100) / 100;
     }
 
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
     function hasOverlap(segs) {
-      const s = [...segs].sort((a,b) => a.start - b.start);
+      const s = [...segs].sort((a,b) => Number(a.start) - Number(b.start));
       for (let i = 1; i < s.length; i++) {
         if (Number(s[i].start) < Number(s[i-1].end)) return true;
       }
@@ -178,14 +196,6 @@
       return "";
     }
 
-    function getVideoScale() {
-      // IMPORTANT: only valid after metadata loaded
-      const vw = videoEl.videoWidth;
-      if (!vw) return null;
-      const rect = videoEl.getBoundingClientRect();
-      return rect.width / vw;
-    }
-
     function hexToRgba(hex, alpha = 0.85) {
       const c = (hex || "#000000").replace("#", "");
       if (c.length !== 6) return `rgba(0,0,0,${alpha})`;
@@ -199,81 +209,173 @@
     // 5) Overlay styling
     // ============================================================
     function buildSmoothOutlineShadows(radiusPx, color, samples = 16) {
-      // Use a "circle" of offsets. More samples => smoother outline.
       const out = [];
       for (let i = 0; i < samples; i++) {
         const angle = (i / samples) * Math.PI * 2;
         const dx = Math.cos(angle) * radiusPx;
         const dy = Math.sin(angle) * radiusPx;
-        // blur=0 keeps it crisp like ASS Outline
         out.push(`${dx.toFixed(2)}px ${dy.toFixed(2)}px 0 ${color}`);
       }
       return out.join(", ");
     }
 
+    function ensureDefaultPosition() {
+      const vw = videoEl.videoWidth;
+      const vh = videoEl.videoHeight;
+      if (!vw || !vh) return;
+
+      // Default: bottom-center-ish
+      const defaultX = vw / 2;
+      const defaultY = vh * 0.88;
+
+      if (style.posX == null) style.posX = defaultX;
+      if (style.posY == null) style.posY = defaultY;
+    }
+
+    function applyOutline(scaleX) {
+      const strokeDisplayPx = Math.max(1, Math.round(style.strokePx * scaleX));
+      const outlineColor = hexToRgba(style.strokeColor, 0.90);
+
+      // For consistency, avoid webkitTextStroke; use text-shadow ring
+      overlayEl.style.webkitTextStroke = "0px transparent";
+      overlayEl.style.textShadow = buildSmoothOutlineShadows(
+        strokeDisplayPx,
+        outlineColor,
+        style.outlineSamples
+      );
+    }
+
     function applyOverlayStyle() {
-      const scale = getVideoScale();
-      if (scale == null) return; // metadata not ready
+      if (!videoEl.videoWidth || !videoEl.videoHeight) return;
+
+      ensureDefaultPosition();
+
+      const rect = videoEl.getBoundingClientRect();
+      const scaleX = rect.width / videoEl.videoWidth;
+      const scaleY = rect.height / videoEl.videoHeight;
 
       overlayEl.style.fontFamily = `${style.fontFamily}, system-ui, sans-serif`;
       overlayEl.style.color = style.color;
 
       // VIDEO px -> display px
-      overlayEl.style.fontSize = (style.fontSizePx * scale * CAL.font) + "px";
-      overlayEl.style.bottom = (style.marginBottomPx * scale * CAL.margin) + "px";
+      overlayEl.style.fontSize = (style.fontSizePx * scaleX) + "px";
+
+      // Anchor bottom-center at (posX,posY):
+      // left/top are the anchor point; transform moves element so that its bottom-center sits at that point.
+      overlayEl.style.left = (style.posX * scaleX) + "px";
+      overlayEl.style.top  = (style.posY * scaleY) + "px";
+      overlayEl.style.transform = "translate(-50%, -100%)";
+
+      overlayEl.style.textAlign = "center";
+      overlayEl.style.width = style.maxWidthPct + "%";
       overlayEl.style.maxWidth = style.maxWidthPct + "%";
       overlayEl.style.margin = "0 auto";
 
-      // Avoid webkitTextStroke (it darkens fill + differs from libass
-      overlayEl.style.webkitTextStroke = "0px transparent";
+      applyOutline(scaleX);
 
-      // Use fractional radius (don’t round early) to reduce "steppy" look.
-      const radius = Math.max(0, style.strokePx * scale * CAL.outline);
-
-      // Smooth outline via multi-shadow
-      const outlineColor = hexToRgba(style.strokeColor, 0.85);
-      const outline = buildSmoothOutlineShadows(radius, outlineColor, style.outlineSamples);
-
-      // Optional: tiny ambient shadow (MVP: keep subtle)
-      // If you want the overlay closer to libass, keep blur small.
-      const ambient = style.shadowPx > 0
-        ? `0 ${(style.shadowPx * scale).toFixed(2)}px ${(style.shadowPx * 2 * scale).toFixed(2)}px rgba(0,0,0,0.35)`
-        : "";
-
-      overlayEl.style.textShadow = ambient
-        ? `${outline}, ${ambient}`
-        : outline;
-
-      // Debug UI
+      // debug
       debugMetaEl.textContent =
-        `intrinsic=${videoEl.videoWidth}x${videoEl.videoHeight} ` +
-        `scale=${scale.toFixed(3)}`;
+        `pos=(${style.posX.toFixed(0)},${style.posY.toFixed(0)})  video=${videoEl.videoWidth}×${videoEl.videoHeight}`;
     }
 
     function applyPreset(preset) {
       style.preset = preset;
 
-      // Keep minimal: tune only what you use now.
+      // Only modify properties that exist now (NO marginBottomPx)
       if (preset === "minimal") {
         style.fontSizePx = 28;
         style.strokePx = 3;
-        style.marginBottomPx = 48;
         style.shadowPx = 0;
       } else if (preset === "karaoke") {
         style.fontSizePx = 32;
         style.strokePx = 4;
-        style.marginBottomPx = 56;
         style.shadowPx = 0;
       } else {
         style.fontSizePx = 28;
         style.strokePx = 3;
-        style.marginBottomPx = 48;
         style.shadowPx = 0;
       }
+
+      // Keep existing posX/posY; do not reset position when switching style
     }
 
     // ============================================================
-    // 6) Segments UI
+    // 6) Dragging (updates style.posX / style.posY in VIDEO px)
+    // ============================================================
+    function startDrag(e) {
+      if (!videoEl.videoWidth || !videoEl.videoHeight) return;
+
+      dragging = true;
+      overlayEl.classList.add("dragging");
+
+      const rect = videoEl.getBoundingClientRect();
+
+      dragStart = {
+        mouseX: e.clientX,
+        mouseY: e.clientY,
+        startPosX: style.posX,
+        startPosY: style.posY,
+        rect,
+      };
+
+      // Prevent text selection while dragging
+      e.preventDefault();
+    }
+
+    function onDragMove(e) {
+      if (!dragging || !dragStart) return;
+
+      const rect = dragStart.rect;
+      const scaleX = rect.width / videoEl.videoWidth;
+      const scaleY = rect.height / videoEl.videoHeight;
+
+      const dxDisp = e.clientX - dragStart.mouseX;
+      const dyDisp = e.clientY - dragStart.mouseY;
+
+      const dxVid = dxDisp / scaleX;
+      const dyVid = dyDisp / scaleY;
+
+      let nx = dragStart.startPosX + dxVid;
+      let ny = dragStart.startPosY + dyVid;
+
+      // Clamp within video frame (anchor point must stay inside)
+      nx = clamp(nx, 0, videoEl.videoWidth);
+      ny = clamp(ny, 0, videoEl.videoHeight);
+
+      style.posX = nx;
+      style.posY = ny;
+
+      applyOverlayStyle();
+    }
+
+    function endDrag() {
+      if (!dragging) return;
+      dragging = false;
+      dragStart = null;
+      overlayEl.classList.remove("dragging");
+    }
+
+    // Mouse drag
+    overlayEl.addEventListener("mousedown", startDrag);
+    window.addEventListener("mousemove", onDragMove);
+    window.addEventListener("mouseup", endDrag);
+
+    // Touch drag (minimal support)
+    overlayEl.addEventListener("touchstart", (e) => {
+      const t = e.touches[0];
+      startDrag({ clientX: t.clientX, clientY: t.clientY, preventDefault: () => e.preventDefault() });
+    }, { passive: false });
+
+    window.addEventListener("touchmove", (e) => {
+      if (!dragging) return;
+      const t = e.touches[0];
+      onDragMove({ clientX: t.clientX, clientY: t.clientY });
+    }, { passive: true });
+
+    window.addEventListener("touchend", endDrag);
+
+    // ============================================================
+    // 7) Segments UI
     // ============================================================
     function renderSegments() {
       segmentsEl.innerHTML = "";
@@ -323,7 +425,7 @@
     }
 
     // ============================================================
-    // 7) API calls
+    // 8) API calls
     // ============================================================
     async function loadInitialData() {
       if (!videoId) {
@@ -358,6 +460,7 @@
 
       if (hasOverlap(segments)) {
         setStatus("Save failed: overlapping segments not supported yet. Adjust timings so they don't overlap.", true);
+        saveBtn.disabled = false;
         return false;
       }
 
@@ -432,7 +535,7 @@
     }
 
     // ============================================================
-    // 8) Overlay update loop (smooth + consistent)
+    // 9) Overlay update loop (smooth + consistent)
     // ============================================================
     function startOverlayLoop() {
       if (rafId) cancelAnimationFrame(rafId);
@@ -446,7 +549,7 @@
     }
 
     // ============================================================
-    // 9) Events
+    // 10) Events
     // ============================================================
     saveBtn.addEventListener("click", saveSegments);
     burnBtn.addEventListener("click", burnVideo);
@@ -457,13 +560,12 @@
     });
 
     videoEl.addEventListener("loadedmetadata", () => {
-      // Apply style after metadata, then once more after layout settles
+      ensureDefaultPosition();
       applyOverlayStyle();
       requestAnimationFrame(applyOverlayStyle);
       startOverlayLoop();
     });
 
-    videoEl.addEventListener("play", applyOverlayStyle);
     window.addEventListener("resize", () => {
       applyOverlayStyle();
       requestAnimationFrame(applyOverlayStyle);

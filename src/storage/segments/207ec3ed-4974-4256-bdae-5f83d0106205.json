@@ -1,12 +1,12 @@
 {
   "video_id": "207ec3ed-4974-4256-bdae-5f83d0106205",
   "source": "manual_edit",
-  "updated_at": "2025-12-20T08:21:38.172377",
+  "updated_at": "2025-12-20T08:49:21.209239",
   "segments": [
     {
       "id": 0,
-      "start": 6,
-      "end": 8,
+      "start": 1,
+      "end": 3,
       "text": "The weather outside is frightful"
     },
     {
