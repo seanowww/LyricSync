@@ -12,6 +12,8 @@ export interface Style {
   fontFamily?: string;
   fontSizePx?: number;
   color?: string;
+  bold?: boolean;
+  italic?: boolean;
   strokePx?: number;
   strokeColor?: string;
   shadowPx?: number;
