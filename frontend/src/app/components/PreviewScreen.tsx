@@ -139,7 +139,10 @@ export function PreviewScreen() {
     const posX = currentStyle.posX ?? video.videoWidth / 2;
     const posY = currentStyle.posY ?? video.videoHeight * 0.88;
 
-    overlay.style.fontFamily = `${currentStyle.fontFamily ?? "Inter"}, system-ui, sans-serif`;
+    // Apply font family - use setProperty with important to override any inherited styles
+    // This ensures fontFamily changes from TextStylingPanel are immediately visible
+    const fontFamily = currentStyle.fontFamily ?? "Inter";
+    overlay.style.setProperty("font-family", `${fontFamily}, system-ui, sans-serif`, "important");
     overlay.style.color = currentStyle.color ?? "#FFFFFF";
     overlay.style.fontSize = `${(currentStyle.fontSizePx ?? 28) * scaleX}px`;
     overlay.style.fontWeight = currentStyle.bold ? "700" : "400";
@@ -338,9 +341,15 @@ export function PreviewScreen() {
   }, [segments, startOverlayLoop]);
 
   // Apply overlay style when style changes (using ref to avoid dependency loop)
+  // This ensures fontFamily and other style changes are immediately reflected
   useEffect(() => {
-    applyOverlayStyle();
-    requestAnimationFrame(applyOverlayStyle);
+    // Use requestAnimationFrame to ensure DOM is ready
+    const rafId = requestAnimationFrame(() => {
+      applyOverlayStyle();
+      // Double RAF to ensure style is applied after any pending updates
+      requestAnimationFrame(applyOverlayStyle);
+    });
+    return () => cancelAnimationFrame(rafId);
   }, [style, applyOverlayStyle]);
 
   // Apply overlay style on window resize
@@ -551,6 +560,8 @@ export function PreviewScreen() {
                     onTouchStart={startDrag}
                     className="absolute left-0 top-0"
                     style={{ padding: "0 16px" }}
+                    // Data attribute for debugging/sanity check - shows current fontFamily
+                    data-font-family={style.fontFamily ?? "Inter"}
                   />
                 </div>
               </div>
