@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { getVideoUrl, getSegments, updateSegments, burnVideo, downloadBlob } from "../../lib/api";
 import type { Segment, Style } from "../../lib/types";
+import { TextStylingPanel } from "./ui/text-styling-panel";
 
 export function PreviewScreen() {
   const [searchParams] = useSearchParams();
@@ -103,37 +104,53 @@ export function PreviewScreen() {
     const defaultX = vw / 2;
     const defaultY = vh * 0.88;
 
-    setStyle((prev) => ({
-      ...prev,
-      posX: prev.posX ?? defaultX,
-      posY: prev.posY ?? defaultY,
-    }));
+    // Only set if not already set (prevents infinite loop)
+    setStyle((prev) => {
+      if (prev.posX != null && prev.posY != null) {
+        return prev; // Already set, don't update
+      }
+      return {
+        ...prev,
+        posX: prev.posX ?? defaultX,
+        posY: prev.posY ?? defaultY,
+      };
+    });
   }, []);
+
+  // Use ref to always read latest style without causing re-renders
+  const styleRef = useRef(style);
+  useEffect(() => {
+    styleRef.current = style;
+  }, [style]);
 
   const applyOverlayStyle = useCallback(() => {
     const video = videoRef.current;
     const overlay = overlayRef.current;
     if (!video || !overlay || !video.videoWidth || !video.videoHeight) return;
 
-    ensureDefaultPosition();
+    // Read from ref to get latest style without dependency
+    const currentStyle = styleRef.current;
 
     const rect = video.getBoundingClientRect();
     const scaleX = rect.width / video.videoWidth;
     const scaleY = rect.height / video.videoHeight;
 
-    const posX = style.posX ?? video.videoWidth / 2;
-    const posY = style.posY ?? video.videoHeight * 0.88;
+    // Use current style position, or fallback to defaults
+    const posX = currentStyle.posX ?? video.videoWidth / 2;
+    const posY = currentStyle.posY ?? video.videoHeight * 0.88;
 
-    overlay.style.fontFamily = `${style.fontFamily}, system-ui, sans-serif`;
-    overlay.style.color = style.color ?? "#FFFFFF";
-    overlay.style.fontSize = `${(style.fontSizePx ?? 28) * scaleX}px`;
+    overlay.style.fontFamily = `${currentStyle.fontFamily ?? "Inter"}, system-ui, sans-serif`;
+    overlay.style.color = currentStyle.color ?? "#FFFFFF";
+    overlay.style.fontSize = `${(currentStyle.fontSizePx ?? 28) * scaleX}px`;
+    overlay.style.fontWeight = currentStyle.bold ? "700" : "400";
+    overlay.style.fontStyle = currentStyle.italic ? "italic" : "normal";
 
     overlay.style.left = `${posX * scaleX}px`;
     overlay.style.top = `${posY * scaleY}px`;
     overlay.style.transform = "translate(-50%, -100%)";
     overlay.style.textAlign = "center";
-    overlay.style.width = `${style.maxWidthPct ?? 90}%`;
-    overlay.style.maxWidth = `${style.maxWidthPct ?? 90}%`;
+    overlay.style.width = `${currentStyle.maxWidthPct ?? 90}%`;
+    overlay.style.maxWidth = `${currentStyle.maxWidthPct ?? 90}%`;
     overlay.style.margin = "0 auto";
     overlay.style.whiteSpace = "pre-wrap";
     overlay.style.lineHeight = "1.15";
@@ -141,15 +158,15 @@ export function PreviewScreen() {
     overlay.style.cursor = dragging ? "grabbing" : "grab";
     overlay.style.userSelect = "none";
 
-    const strokeDisplayPx = Math.max(1, Math.round((style.strokePx ?? 3) * scaleX));
-    const outlineColor = hexToRgba(style.strokeColor ?? "#000000", 0.90);
+    const strokeDisplayPx = Math.max(1, Math.round((currentStyle.strokePx ?? 3) * scaleX));
+    const outlineColor = hexToRgba(currentStyle.strokeColor ?? "#000000", 0.90);
     overlay.style.webkitTextStroke = "0px transparent";
     overlay.style.textShadow = buildSmoothOutlineShadows(
       strokeDisplayPx,
       outlineColor,
-      style.outlineSamples ?? 16
+      currentStyle.outlineSamples ?? 16
     );
-  }, [style, dragging, ensureDefaultPosition]);
+  }, [dragging]); // Only depend on dragging, not style
 
   const applyPreset = (preset: string) => {
     if (preset === "minimal") {
@@ -284,13 +301,22 @@ export function PreviewScreen() {
     loadData();
   }, [videoId]);
 
-  // Video metadata loaded
+  // Video metadata loaded - set default position once
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     const handleLoadedMetadata = () => {
-      ensureDefaultPosition();
+      // Set default position only if not already set
+      if (style.posX == null || style.posY == null) {
+        const defaultX = video.videoWidth / 2;
+        const defaultY = video.videoHeight * 0.88;
+        setStyle((prev) => ({
+          ...prev,
+          posX: prev.posX ?? defaultX,
+          posY: prev.posY ?? defaultY,
+        }));
+      }
       applyOverlayStyle();
       requestAnimationFrame(applyOverlayStyle);
       startOverlayLoop();
@@ -300,7 +326,7 @@ export function PreviewScreen() {
     return () => {
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
     };
-  }, [ensureDefaultPosition, applyOverlayStyle, startOverlayLoop]);
+  }, [style.posX, style.posY, applyOverlayStyle, startOverlayLoop]);
 
   // Restart overlay loop when segments change
   useEffect(() => {
@@ -311,14 +337,20 @@ export function PreviewScreen() {
     }
   }, [segments, startOverlayLoop]);
 
-  // Apply overlay style when style changes or window resizes
+  // Apply overlay style when style changes (using ref to avoid dependency loop)
   useEffect(() => {
     applyOverlayStyle();
-    const timeoutId = setTimeout(() => {
-      requestAnimationFrame(applyOverlayStyle);
-    }, 0);
-    return () => clearTimeout(timeoutId);
-  }, [applyOverlayStyle, style]);
+    requestAnimationFrame(applyOverlayStyle);
+  }, [style, applyOverlayStyle]);
+
+  // Apply overlay style on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      applyOverlayStyle();
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [applyOverlayStyle]);
 
   // Global drag handlers
   useEffect(() => {
@@ -501,28 +533,45 @@ export function PreviewScreen() {
 
       {/* Video and Segments */}
       <div className="flex-1 overflow-auto px-8 py-6">
-        <div className="max-w-3xl mx-auto">
-          {/* Video Container - Smaller to match Figma */}
-          <div className="relative w-full mb-8 flex justify-center">
-            <div className="relative" style={{ maxWidth: "600px", width: "100%" }}>
-              <video
-                ref={videoRef}
-                src={getVideoUrl(videoId)}
-                controls
-                className="w-full block bg-black rounded-lg"
-              />
-              <div
-                ref={overlayRef}
-                onMouseDown={startDrag}
-                onTouchStart={startDrag}
-                className="absolute left-0 top-0"
-                style={{ padding: "0 16px" }}
+        <div className="max-w-6xl mx-auto">
+          <div className="flex gap-8 items-start">
+            {/* Left: Video Container */}
+            <div className="flex-1">
+              <div className="relative w-full mb-8 flex justify-center">
+                <div className="relative" style={{ maxWidth: "600px", width: "100%" }}>
+                  <video
+                    ref={videoRef}
+                    src={getVideoUrl(videoId)}
+                    controls
+                    className="w-full block bg-black rounded-lg"
+                  />
+                  <div
+                    ref={overlayRef}
+                    onMouseDown={startDrag}
+                    onTouchStart={startDrag}
+                    className="absolute left-0 top-0"
+                    style={{ padding: "0 16px" }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Text Styling Panel */}
+            <div className="flex-shrink-0">
+              <TextStylingPanel
+                value={style}
+                onChange={(patch) =>
+                  setStyle((prev) => ({
+                    ...prev,
+                    ...patch,
+                  }))
+                }
               />
             </div>
           </div>
 
           {/* Segments - Card-based display matching Figma */}
-          <div>
+          <div className="mt-8">
             <h2 className="mb-4">Segments</h2>
             {hasOverlappingSegments && (
               <div className="mb-4 p-3 bg-yellow-50 border border-yellow-400 rounded text-yellow-800 text-sm">

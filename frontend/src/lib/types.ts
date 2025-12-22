@@ -2,8 +2,8 @@
 
 export interface Segment {
   id?: number;
-  start: number;
-  end: number;
+  start: number;  // Backend uses 'start', not 'startTime'
+  end: number;    // Backend uses 'end', not 'endTime'
   text: string;
 }
 

@@ -98,14 +98,14 @@ export function TextStylingPanel({ value, onChange }: TextStylingPanelProps) {
         <div className="flex items-center gap-3">
           <input
             type="color"
-            value={value.outlineColor}
-            onChange={(e) => onChange({ outlineColor: e.target.value })}
+            value={value.strokeColor}
+            onChange={(e) => onChange({ strokeColor: e.target.value })}
             className="w-12 h-10 rounded border border-border cursor-pointer"
           />
           <input
             type="text"
-            value={value.outlineColor}
-            onChange={(e) => onChange({ outlineColor: e.target.value })}
+            value={value.strokeColor}
+            onChange={(e) => onChange({ strokeColor: e.target.value })}
             className="flex-1 px-3 py-2 bg-input-background border border-border rounded-lg"
           />
         </div>
