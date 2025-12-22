@@ -27,11 +27,23 @@ def escape_ass_text(text: str) -> str:
 
 
 def css_hex_to_ass(hex_color: str) -> str:
-    """Convert CSS hex color to ASS format: #RRGGBB -> &H00BBGGRR"""
-    c = (hex_color or "#FFFFFF").lstrip("#")
+    """
+    Convert CSS hex color to ASS format: #RRGGBB -> &H00BBGGRR
+    
+    ASS uses BGR (Blue-Green-Red) format, not RGB.
+    Format: &H00BBGGRR where:
+    - 00 = alpha (opaque)
+    - BB = Blue component
+    - GG = Green component  
+    - RR = Red component
+    
+    Example: #36ce5c (RGB: 54, 206, 92) -> &H005CCE36 (BGR: 92, 206, 54)
+    """
+    c = (hex_color or "#FFFFFF").lstrip("#").upper()  # Normalize to uppercase
     if len(c) != 6:
         c = "FFFFFF"
     rr, gg, bb = c[0:2], c[2:4], c[4:6]
+    # ASS format: &H00BBGGRR (BGR order, not RGB)
     return f"&H00{bb}{gg}{rr}"
 
 

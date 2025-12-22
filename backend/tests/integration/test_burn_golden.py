@@ -292,6 +292,108 @@ class TestGoldenSnapshots:
             "bold": False,
             "italic": False,
         }),
+        # Different colors
+        ("green_color", {
+            "fontFamily": "Inter",
+            "fontSizePx": 28,
+            "color": "#36ce5c",  # Green from user's image
+            "strokePx": 3,
+            "strokeColor": "#000000",
+            "posX": 320,
+            "posY": 400,
+            "bold": False,
+            "italic": False,
+        }),
+        ("red_color", {
+            "fontFamily": "Inter",
+            "fontSizePx": 28,
+            "color": "#FF0000",
+            "strokePx": 3,
+            "strokeColor": "#000000",
+            "posX": 320,
+            "posY": 400,
+            "bold": False,
+            "italic": False,
+        }),
+        ("blue_color", {
+            "fontFamily": "Inter",
+            "fontSizePx": 28,
+            "color": "#0000FF",
+            "strokePx": 3,
+            "strokeColor": "#FFFFFF",  # White outline for contrast
+            "posX": 320,
+            "posY": 400,
+            "bold": False,
+            "italic": False,
+        }),
+        ("yellow_color", {
+            "fontFamily": "Inter",
+            "fontSizePx": 28,
+            "color": "#FFFF00",
+            "strokePx": 3,
+            "strokeColor": "#000000",
+            "posX": 320,
+            "posY": 400,
+            "bold": False,
+            "italic": False,
+        }),
+        # Different positions
+        ("top_left", {
+            "fontFamily": "Inter",
+            "fontSizePx": 28,
+            "color": "#FFFFFF",
+            "strokePx": 3,
+            "strokeColor": "#000000",
+            "posX": 100,  # Left side
+            "posY": 50,   # Top
+            "bold": False,
+            "italic": False,
+        }),
+        ("top_right", {
+            "fontFamily": "Inter",
+            "fontSizePx": 28,
+            "color": "#FFFFFF",
+            "strokePx": 3,
+            "strokeColor": "#000000",
+            "posX": 540,  # Right side (640 - 100)
+            "posY": 50,   # Top
+            "bold": False,
+            "italic": False,
+        }),
+        ("bottom_left", {
+            "fontFamily": "Inter",
+            "fontSizePx": 28,
+            "color": "#FFFFFF",
+            "strokePx": 3,
+            "strokeColor": "#000000",
+            "posX": 100,   # Left side
+            "posY": 430,  # Bottom (480 - 50)
+            "bold": False,
+            "italic": False,
+        }),
+        ("center", {
+            "fontFamily": "Inter",
+            "fontSizePx": 28,
+            "color": "#36ce5c",  # Green color
+            "strokePx": 3,
+            "strokeColor": "#000000",
+            "posX": 320,  # Center X
+            "posY": 240,  # Center Y
+            "bold": False,
+            "italic": False,
+        }),
+        # Color + position combinations
+        ("green_top_center", {
+            "fontFamily": "Inter",
+            "fontSizePx": 28,
+            "color": "#36ce5c",
+            "strokePx": 3,
+            "strokeColor": "#000000",
+            "posX": 320,
+            "posY": 100,
+            "bold": False,
+            "italic": False,
+        }),
     ])
     def test_style_golden_snapshot(
         self, client, video_id_with_upload, temp_storage, style_name, style_config

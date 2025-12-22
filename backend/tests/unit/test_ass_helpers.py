@@ -85,6 +85,26 @@ class TestCssHexToAss:
         assert _css_hex_to_ass("#123") == "&H00FFFFFF"
         assert _css_hex_to_ass(None) == "&H00FFFFFF"
 
+    def test_green_color_from_image(self):
+        """Test the specific green color from user's image: #36ce5c"""
+        # RGB(54, 206, 92) should convert to BGR(92, 206, 54)
+        # BGR format: &H00BBGGRR = &H005CCE36
+        # Input: #36ce5c = RGB(36, CE, 5C) = RGB(54, 206, 92)
+        # Output: BGR(5C, CE, 36) = &H005CCE36
+        result = _css_hex_to_ass("#36ce5c")
+        assert result == "&H005CCE36", f"Expected &H005CCE36, got {result}"
+        # Verify components:
+        # - 5C (hex) = 92 (decimal) = Blue component
+        # - CE (hex) = 206 (decimal) = Green component
+        # - 36 (hex) = 54 (decimal) = Red component
+
+    def test_lowercase_input(self):
+        """Test that lowercase hex input is normalized to uppercase"""
+        assert _css_hex_to_ass("#ff0000") == "&H000000FF"  # Red
+        assert _css_hex_to_ass("#00ff00") == "&H0000FF00"  # Green
+        assert _css_hex_to_ass("#0000ff") == "&H00FF0000"  # Blue
+        assert _css_hex_to_ass("#36ce5c") == "&H005CCE36"  # Green from image
+
 
 class TestAlignToAss:
     """Test alignment conversion"""
