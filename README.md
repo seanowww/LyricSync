@@ -19,21 +19,21 @@ Upload a video → Get AI-transcribed lyrics → Style and position → Export a
 ## MVP Features
 
 ### Core Functionality
-- ✅ Video/audio file upload (MP4, MOV, etc.)
-- ✅ Automatic transcription with Whisper API
-- ✅ Time-aligned lyric segments
-- ✅ Live preview with synced text overlay
-- ✅ Editable text and timing
-- ✅ Drag-to-position lyrics on video
-- ✅ Text styling panel (font family, size, color, bold, italic, outline)
-- ✅ Video export with burned-in subtitles (MP4)
+- Video/audio file upload (MP4, MOV, etc.)
+- Automatic transcription with Whisper API
+- Time-aligned lyric segments
+- Live preview with synced text overlay
+- Editable text and timing
+- Drag-to-position lyrics on video
+- Text styling panel (font family, size, color, bold, italic, outline)
+- Video export with burned-in subtitles (MP4)
 
 ### Technical Features
-- ✅ FastAPI backend with REST API
-- ✅ React + TypeScript frontend
-- ✅ ASS subtitle generation
-- ✅ FFmpeg video processing pipeline
-- ✅ Comprehensive test suite (unit, integration, golden snapshots)
+- FastAPI backend with REST API
+- React + TypeScript frontend
+- ASS subtitle generation
+- FFmpeg video processing pipeline
+- Comprehensive test suite (unit, integration, golden snapshots)
 
 ---
 
@@ -215,10 +215,10 @@ See `backend/TESTING.md` for detailed testing documentation.
 **MVP — Fully Functional**
 
 This MVP includes:
-- ✅ Complete transcription pipeline
-- ✅ Interactive preview and editing
-- ✅ Video export with burned subtitles
-- ✅ Comprehensive test coverage
+- Complete transcription pipeline
+- Interactive preview and editing
+- Video export with burned subtitles
+- Comprehensive test coverage
 
 Ready for production use with proper API key configuration.
 
