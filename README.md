@@ -1,96 +1,238 @@
-````markdown
-# Lyrically — AI-Assisted Lyric Sync Tool (MVP)
+# LyricSync — AI-Powered Lyric Video Creator (MVP)
 
-**Lyrically** is an early-stage tool for singers and creators that generates time-aligned lyrics from singing videos using AI.  
-Upload a video → get an editable, synced **lyric timeline** you can preview and export.
+**LyricSync** is a web application that automatically generates time-aligned lyrics from singing videos using AI, then lets you style and position them before burning them directly into your video.
 
-This is the first MVP focusing on:
-- **Automatic transcription**
-- **Timing extraction**
-- **Synced preview UI**
-- **Export of timing data**
-
-> Note: Full video rendering with lyrics burned in is planned for future releases.
+Upload a video → Get AI-transcribed lyrics → Style and position → Export a professional lyric video.
 
 ---
 
 ## What It Does
 
-- Accepts audio/video uploads
-- Transcribes vocals using Whisper
-- Generates a simple **timing JSON**
-- Displays synced lyrics with the video
-- Lets users edit text and export timing
+- **Automatic transcription** using OpenAI Whisper API
+- **Real-time preview** with draggable text overlay synced to video playback
+- **Customizable styling**: fonts, colors, sizes, bold/italic, outlines
+- **Drag-and-drop positioning** of lyrics on the video
+- **Video export** with lyrics burned in using FFmpeg and ASS subtitles
 
 ---
 
-## Why It Matters
+## MVP Features
 
-Manual lyric syncing for cover videos is tedious and time-consuming.  
-Lyrically reduces hours of manual work to seconds.
+### Core Functionality
+- ✅ Video/audio file upload (MP4, MOV, etc.)
+- ✅ Automatic transcription with Whisper API
+- ✅ Time-aligned lyric segments
+- ✅ Live preview with synced text overlay
+- ✅ Editable text and timing
+- ✅ Drag-to-position lyrics on video
+- ✅ Text styling panel (font family, size, color, bold, italic, outline)
+- ✅ Video export with burned-in subtitles (MP4)
 
----
-
-## MVP Features (Current)
-
-- File upload (web)
-- Whisper transcription integration
-- Timing JSON generation
-- Sync preview of video + lyrics
-- Export as `.srt` or JSON
+### Technical Features
+- ✅ FastAPI backend with REST API
+- ✅ React + TypeScript frontend
+- ✅ ASS subtitle generation
+- ✅ FFmpeg video processing pipeline
+- ✅ Comprehensive test suite (unit, integration, golden snapshots)
 
 ---
 
 ## Stack
 
-- **Next.js** (frontend + API)
-- **TypeScript**  
-- **Whisper (local or API)** for transcription
-- **HTML5 `<video>`** for playback sync
+### Backend
+- **FastAPI** (Python web framework)
+- **OpenAI Whisper API** (transcription)
+- **FFmpeg** (video processing and subtitle burning)
+- **ASS subtitles** (Advanced SubStation Alpha format)
+- **Pytest** (testing framework)
+
+### Frontend
+- **React 18** + **TypeScript**
+- **Vite** (build tool)
+- **React Router** (routing)
+- **Tailwind CSS** (styling)
+- **Radix UI** (component library)
 
 ---
 
-## How It Works (Simplified)
+## How It Works
 
-1. Upload video
-2. Backend calls Whisper → returns segments
-3. Convert segments → timing JSON
-4. Frontend displays synced lyrics with video
-5. User can edit and export timing
+1. **Upload**: User uploads a video/audio file
+2. **Transcribe**: Backend extracts audio and sends to Whisper API
+3. **Generate Segments**: Whisper returns time-aligned text segments
+4. **Preview**: Frontend displays video with draggable text overlay
+5. **Edit**: User can edit text, timing, styling, and position
+6. **Burn**: Backend generates ASS subtitles and burns them into video using FFmpeg
+7. **Export**: User downloads the final MP4 with burned-in lyrics
 
 ---
 
-## Timing JSON (Example)
+## Project Structure
+
+```
+LyricSync/
+├── backend/
+│   ├── src/
+│   │   ├── main.py              # FastAPI application
+│   │   ├── timing_pipeline.py  # Whisper integration
+│   │   ├── schemas.py           # Pydantic models
+│   │   ├── utils/
+│   │   │   └── ass_helpers.py  # ASS subtitle helpers
+│   │   ├── services/
+│   │   │   └── segments_store.py  # Segment persistence
+│   │   └── assets/
+│   │       └── fonts/           # Font files (Inter, Arial, etc.)
+│   ├── tests/
+│   │   ├── unit/                # Unit tests
+│   │   ├── integration/         # Integration tests
+│   │   └── assets/
+│   │       └── golden/           # Golden snapshot images
+│   └── TESTING.md               # Testing documentation
+│
+└── frontend/
+    ├── src/
+    │   ├── app/
+    │   │   ├── App.tsx          # Main app component
+    │   │   └── components/
+    │   │       ├── UploadScreen.tsx
+    │   │       ├── PreviewScreen.tsx
+    │   │       └── ui/           # UI components
+    │   └── lib/
+    │       ├── api.ts            # API client
+    │       └── types.ts          # TypeScript types
+    └── vite.config.ts           # Vite configuration
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Python 3.10+
+- Node.js 18+
+- FFmpeg (for video processing)
+- OpenAI API key (for Whisper transcription)
+
+### Backend Setup
+
+```bash
+cd backend
+
+# Install dependencies
+pip install -r requirements.txt  # (if you have one) or:
+pip install fastapi uvicorn python-multipart openai python-dotenv pydantic
+
+# Set up environment variables
+echo "OPENAI_API_KEY=your_key_here" > .env
+
+# Run the server
+uvicorn src.main:app --reload --port 8000
+```
+
+### Frontend Setup
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+```
+
+The app will be available at `http://localhost:5173` (frontend) and `http://localhost:8000` (backend API).
+
+---
+
+## API Endpoints
+
+- `POST /api/transcribe` - Upload video and get transcription
+- `GET /api/video/{video_id}` - Get video file
+- `GET /api/segments/{video_id}` - Get lyric segments
+- `PUT /api/segments/{video_id}` - Update lyric segments
+- `POST /api/burn` - Burn subtitles into video and return MP4
+
+---
+
+## Testing
+
+The backend includes a comprehensive test suite:
+
+```bash
+cd backend
+
+# Run all tests
+pytest
+
+# Run specific test categories
+pytest tests/unit/              # Unit tests
+pytest tests/integration/       # Integration tests
+pytest tests/integration/test_burn_golden.py  # Golden snapshot tests
+```
+
+See `backend/TESTING.md` for detailed testing documentation.
+
+---
+
+## Supported Fonts
+
+- Inter (with Bold, Italic, Bold Italic variants)
+- Arial (with Bold, Italic, Bold Italic variants)
+- Georgia (with Bold, Italic, Bold Italic variants)
+- Helvetica (with Bold, Italic, Bold Italic variants)
+- Times New Roman (with Bold, Italic, Bold Italic variants)
+
+---
+
+## Example Segment Format
 
 ```json
-[
-  { "id": 1, "start": 3.2, "end": 5.4, "text": "I still remember the 3rd of December" },
-  { "id": 2, "start": 5.4, "end": 7.2, "text": "You in your sweater" }
-]
-````
-
----
-
-## Roadmap (Next)
-
-* `.srt` → FFmpeg render pipeline
-* Style presets and templates
-* Drag-and-drop positioning
-* Full video export (downloadable)
-* Project persistence + accounts
+{
+  "video_id": "abc123",
+  "segments": [
+    {
+      "id": 0,
+      "start": 0.0,
+      "end": 2.5,
+      "text": "The weather outside is frightful"
+    },
+    {
+      "id": 1,
+      "start": 2.5,
+      "end": 5.0,
+      "text": "But the fire is so delightful"
+    }
+  ]
+}
+```
 
 ---
 
 ## Status
 
-**Early MVP — testing phase.**
-Designed to validate core transcription + timing accuracy before building the full lyric video renderer.
+**MVP — Fully Functional**
+
+This MVP includes:
+- ✅ Complete transcription pipeline
+- ✅ Interactive preview and editing
+- ✅ Video export with burned subtitles
+- ✅ Comprehensive test coverage
+
+Ready for production use with proper API key configuration.
 
 ---
 
-## Feedback & Contributions
+## Roadmap (Future Enhancements)
 
-Issues, feedback, and PRs welcome — this is a solo project in active development.
+- [ ] Multiple style presets
+- [ ] Text animation effects
+- [ ] Multi-line text support
+- [ ] Project persistence
+- [ ] User accounts
+- [ ] Batch processing
+- [ ] Cloud storage integration
 
 ---
 
@@ -98,4 +240,8 @@ Issues, feedback, and PRs welcome — this is a solo project in active developme
 
 MIT
 
-```
+---
+
+## Feedback & Contributions
+
+Issues, feedback, and PRs welcome! This is an active project in development.
