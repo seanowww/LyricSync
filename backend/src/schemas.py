@@ -21,6 +21,8 @@ class Style(BaseModel):
     strokePx: int = 3                 # outline thickness
     strokeColor: str = "rgba(0,0,0,0.85)"
     shadowPx: int = 0                 # keep 0 for now
+    bold: bool = False
+    italic: bool = False
     align: str = "bottom-center"      # constrain to known set
 
     posX: Optional[float] = None

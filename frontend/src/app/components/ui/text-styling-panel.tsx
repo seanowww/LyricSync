@@ -11,8 +11,6 @@ const FONT_OPTIONS = [
   "Arial",
   "Helvetica",
   "Times New Roman",
-  "Courier New",
-  "Verdana",
   "Georgia",
 ];
 

@@ -18,7 +18,7 @@ logger = logging.getLogger("lyricsync")
 
 load_dotenv()
 
-from .timing_pipeline import generate_timing_segments
+from src.timing_pipeline import generate_timing_segments
 
 app = FastAPI()
 
@@ -99,38 +99,13 @@ def _probe_video_resolution(path: Path) -> tuple[int, int]:
     return int(stream["width"]), int(stream["height"])
 
 
-def _format_ass_timestamp(seconds: float) -> str:
-    if seconds < 0:
-        seconds = 0.0
-    cs_total = int(round(seconds * 100))  # centiseconds
-    cs = cs_total % 100
-    total_s = cs_total // 100
-    s = total_s % 60
-    total_m = total_s // 60
-    m = total_m % 60
-    h = total_m // 60
-    return f"{h}:{m:02d}:{s:02d}.{cs:02d}"
-
-
-def _escape_ass_text(text: str) -> str:
-    text = (text or "").replace("\r", "")
-    text = text.replace("\n", r"\N")
-    text = text.replace("{", r"\{").replace("}", r"\}")
-    return text
-
-
-def _css_hex_to_ass(hex_color: str) -> str:
-    # "#RRGGBB" -> "&H00BBGGRR" (alpha 00 = opaque)
-    c = (hex_color or "#FFFFFF").lstrip("#")
-    if len(c) != 6:
-        c = "FFFFFF"
-    rr, gg, bb = c[0:2], c[2:4], c[4:6]
-    return f"&H00{bb}{gg}{rr}"
-
-
-def _align_to_ass(align: str) -> int:
-    # MVP: only bottom-center is supported
-    return 2  # bottom-center
+# Import helper functions from utils module
+from src.utils.ass_helpers import (
+    format_ass_timestamp as _format_ass_timestamp,
+    escape_ass_text as _escape_ass_text,
+    css_hex_to_ass as _css_hex_to_ass,
+    align_to_ass as _align_to_ass,
+)
 
 
 def _segments_to_ass(segments, style, play_res_x: int, play_res_y: int) -> str:
@@ -139,12 +114,21 @@ def _segments_to_ass(segments, style, play_res_x: int, play_res_y: int) -> str:
     MVP sync rules:
     - Frontend drags (posX,posY) in VIDEO pixels.
     - Backend must burn at the same absolute position using ASS override tags:
-        {\an2\pos(x,y)}  # bottom-center anchored at (x,y)
+        {\\an2\\pos(x,y)}  # bottom-center anchored at (x,y)
     - We no longer rely on MarginV (marginBottomPx removed).
     """
 
     # ---- 1) Style defaults ----
-    font = style.fontFamily if style and style.fontFamily else "Inter"
+    base_font = style.fontFamily if style and style.fontFamily else "Inter"
+    # Build font name with Bold/Italic suffix to match font file names
+    font = base_font
+    if style and style.bold and style.italic:
+        font = f"{base_font} Bold Italic"
+    elif style and style.bold:
+        font = f"{base_font} Bold"
+    elif style and style.italic:
+        font = f"{base_font} Italic"
+    
     size = style.fontSizePx if style and style.fontSizePx else 28
     primary = _css_hex_to_ass(style.color) if style and style.color else "&H00FFFFFF"
 
@@ -361,6 +345,8 @@ async def burn_video(payload: BurnRequest):
 
     output_path = OUTPUT_DIR / f"{payload.video_id}_burned.mp4"
 
+    # Font name is already modified in _segments_to_ass to include Bold/Italic suffix
+    # FONTS_DIR points to the directory containing all font files
     vf = f"subtitles={str(ass_path)}:fontsdir={str(FONTS_DIR)}"
 
     ffmpeg_cmd = [
