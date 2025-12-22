@@ -5,12 +5,12 @@ import { PreviewScreen } from "./components/PreviewScreen";
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="size-full">
+    <div className="size-full">
         <Routes>
           <Route path="/" element={<UploadScreen />} />
           <Route path="/preview" element={<PreviewScreen />} />
         </Routes>
-      </div>
+    </div>
     </BrowserRouter>
   );
 }

@@ -152,10 +152,12 @@ export function PreviewScreen() {
     overlay.style.top = `${posY * scaleY}px`;
     overlay.style.transform = "translate(-50%, -100%)";
     overlay.style.textAlign = "center";
-    overlay.style.width = `${currentStyle.maxWidthPct ?? 90}%`;
-    overlay.style.maxWidth = `${currentStyle.maxWidthPct ?? 90}%`;
+    // Remove width constraints to match backend behavior (ASS doesn't wrap)
+    // Backend renders text as-is without wrapping, so overlay should match
+    overlay.style.width = "auto";
+    overlay.style.maxWidth = "none";
     overlay.style.margin = "0 auto";
-    overlay.style.whiteSpace = "pre-wrap";
+    overlay.style.whiteSpace = "nowrap";  // Prevent wrapping to match backend ASS behavior
     overlay.style.lineHeight = "1.15";
     overlay.style.pointerEvents = "auto";
     overlay.style.cursor = dragging ? "grabbing" : "grab";
