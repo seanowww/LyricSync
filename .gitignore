@@ -45,9 +45,11 @@ build/
 frontend/dist/
 frontend/.vite/
 frontend/build/
+frontend/node_modules/
 
 # TypeScript
 *.tsbuildinfo
+*.tsbuildinfo.*
 
 # ------------------------------
 # Python / Backend
@@ -68,10 +70,25 @@ venv.bak/
 
 # Python testing
 .pytest_cache/
+.pytest_cache
 .coverage
+*.cover
 htmlcov/
 .tox/
 .hypothesis/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Test artifacts (keep golden images, ignore generated test files)
+backend/tests/*/actual_*.png
+backend/tests/*/*/actual_*.png
+backend/tests/*/test_*.mp4
+backend/tests/*/*/test_*.mp4
+backend/tests/*/test_*.mov
+backend/tests/*/*/test_*.mov
+backend/tests/*/test_*.ass
+backend/tests/*/*/test_*.ass
 
 # ------------------------------
 # Environment Variables
@@ -126,6 +143,9 @@ coverage/
 *.lcov
 .nyc_output/
 .jest/
+test-results/
+playwright-report/
+test-results.xml
 
 # ------------------------------
 # Jupyter
@@ -140,3 +160,14 @@ coverage/
 *.cache
 .cache/
 .turbo/
+
+# Temporary test files
+*.tmp
+*.temp
+test_*.mp4
+test_*.mov
+actual_*.png
+
+# FFmpeg temporary files
+*.ffmpeg
+ffmpeg*.log
