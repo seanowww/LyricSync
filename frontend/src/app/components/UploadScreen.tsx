@@ -84,12 +84,21 @@ export function UploadScreen() {
   };
 
   return (
-    <div className="size-full flex items-center justify-center px-8 bg-background pt-16">
+    <div className="size-full flex items-center justify-center px-8 py-5 bg-background pt-16">
       <div className="w-full max-w-2xl">
         {/* Header */}
         <div className="text-center mb-16">
-          <h1 className="mb-4">LyricSync.</h1>
-          <p className="text-secondary max-w-md mx-auto">
+          <h1 className="mb-4 text-[3.5rem] tracking-[0.18em] uppercase font-semibold text-[var(--text)]">
+            <span
+              className="relative inline-flex items-center"
+              style={{ textShadow: "0 0 18px rgba(109, 90, 230, 0.25)" }}
+            >
+              <span className="text-[var(--text)]">Lyric</span>
+              <span className="text-[var(--text)]/80 ml-0.5">Sync</span>
+              <span className="ml-0.5 text-[var(--accent)]">.</span>
+            </span>
+          </h1>
+          <p className="text-secondary max-w-2xl mx-auto opacity-50">
             Time your lyrics perfectly. Create stunning lyric videos with precise subtitle timing.
           </p>
         </div>
@@ -99,7 +108,9 @@ export function UploadScreen() {
           onClick={handleClick}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
-          className="border-2 border-dashed border-border rounded-lg p-20 text-center cursor-pointer hover:border-primary/20 transition-colors mb-8"
+          className="border-2 border-dashed border-[var(--border)] rounded-2xl p-16 text-center cursor-pointer
+           bg-[var(--panel)] hover:border-[var(--accent)] hover:bg-[var(--panel2)]
+           transition-colors mb-8"
         >
           <input
             ref={fileInputRef}
@@ -110,7 +121,8 @@ export function UploadScreen() {
           />
           <div className="space-y-6">
             <div className="flex justify-center">
-              <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center">
+              <div className="w-16 h-16 rounded-full bg-[var(--panel2)] text-[var(--accent)]
+           flex items-center justify-center shadow-[var(--shadow)]">
                 <svg
                   width="24"
                   height="24"
@@ -150,7 +162,10 @@ export function UploadScreen() {
           <button
             onClick={handleUpload}
             disabled={isUploading || !selectedFileName}
-            className="px-8 py-3 bg-accent hover:bg-accent/90 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-8 py-3 rounded-full font-medium
+           bg-[var(--accent)] text-white
+           hover:bg-[#5a4cd4] transition-colors
+           disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isUploading ? "Uploading..." : "Upload & Transcribe"}
           </button>

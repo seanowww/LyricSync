@@ -14,16 +14,15 @@ interface MessageProps {
 }
 
 const typeStyles: Record<MessageType, string> = {
-  error: "bg-[#f8d7da] border-[#f5c6cb] text-[#721c24]",
-  success: "bg-[#d4edda] border-[#c3e6cb] text-[#155724]",
-  loading: "bg-accent/30 border-border text-foreground",
-  info: "bg-accent/30 border-border text-foreground",
-};
-
+    error: "bg-[var(--panel2)] text-[var(--danger)]",
+    success: "bg-[var(--panel2)] text-[var(--success)]",
+    loading: "bg-[var(--panel2)] text-[var(--muted)]",
+    info: "bg-[var(--panel2)] text-[var(--muted)]",
+  };
 export function Message({ type = "info", children, className = "" }: MessageProps) {
   return (
     <div
-      className={`px-4 py-3 rounded-lg border ${typeStyles[type]} ${className}`}
+      className={`px-4 py-2.5 rounded-lg text-sm ${typeStyles[type]} ${className}`}
       role="alert"
     >
       <span className="text-sm font-medium">{children}</span>

@@ -22,6 +22,7 @@ export function PreviewScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [isBurning, setIsBurning] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [showToast, setShowToast] = useState(false);
 
   const [style, setStyle] = useState<Style>({
     preset: "default",
@@ -476,6 +477,26 @@ export function PreviewScreen() {
     }
   };
 
+  // Toast visibility (non-blocking, overlay)
+  useEffect(() => {
+    if (!status) {
+      setShowToast(false);
+      return;
+    }
+    setShowToast(true);
+    const lower = status.toLowerCase();
+    const isPersistent =
+      isError ||
+      lower.includes("loading") ||
+      lower.includes("burning") ||
+      lower.includes("saving");
+
+    if (!isPersistent) {
+      const t = setTimeout(() => setShowToast(false), 2000);
+      return () => clearTimeout(t);
+    }
+  }, [status, isError]);
+
   // Update segment
   const updateSegment = (index: number, field: keyof Segment, value: string | number) => {
     setSegments((prev) => {
@@ -508,83 +529,79 @@ export function PreviewScreen() {
 
   return (
     <div className="size-full flex flex-col bg-background">
-      {/* Header - Match Figma: Back button left, Title center, Save/Burn buttons right */}
-      <div className="border-b border-border px-8 py-6 flex items-center justify-between">
+      {/* Header - Back, brand, primary action */}
+      <div className="border-b border-[var(--border)] px-8 py-9 flex items-center justify-between bg-[var(--panel2)]">
         <button
           onClick={() => navigate("/")}
-          className="text-secondary hover:text-primary transition-colors px-3 py-1.5 rounded-lg hover:bg-muted/50"
+          className="text-[var(--muted)] hover:text-[var(--text)] transition-colors px-3 py-1.5 rounded-lg hover:bg-[rgba(255,255,255,0.03)]"
         >
           ← Back
         </button>
-        <h1 className="absolute left-1/2 -translate-x-1/2">LyricSync.</h1>
+        <h1 className="absolute left-1/2 -translate-x-1/2 text-[1.8 rem] tracking-[0.18em] uppercase font-semibold text-[var(--text)]">
+          <span
+            className="relative inline-flex items-center"
+            style={{ textShadow: "0 0 22px rgba(109, 90, 230, 0.25)" }}
+          >
+            <span className="text-[var(--text)]">Lyric</span>
+            <span className="text-[var(--text)]/80 ml-0.5">Sync</span>
+            <span className="ml-0.5 text-[var(--accent)]">.</span>
+          </span>
+        </h1>
         <div className="flex items-center gap-3">
           <button
             onClick={handleSave}
             disabled={isSaving || isBurning || hasOverlappingSegments}
-            className="px-6 py-2 border border-border rounded-lg hover:bg-muted/50 hover:border-primary/30 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-5 py-2 border border-[var(--border)] rounded-full text-sm text-[var(--muted)]
+           hover:bg-[rgba(255,255,255,0.03)] hover:border-[var(--border)]
+           transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Save
           </button>
           <button
             onClick={handleBurn}
             disabled={isSaving || isBurning || hasOverlappingSegments}
-            className="px-6 py-2 bg-accent-purple hover:bg-accent-purple/90 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 rounded-full text-sm font-medium text-white
+           bg-[var(--accent)] hover:bg-[#5a4cd4]
+           shadow-[var(--shadow)]
+           transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Burn MP4
           </button>
         </div>
       </div>
 
-      {/* Controls Bar */}
-      <div className="px-8 py-4 border-b border-border flex items-center gap-4 flex-wrap">
-        <label className="flex items-center gap-2">
-          Style:
-          <select
-            value={style.preset}
-            onChange={(e) => {
-              applyPreset(e.target.value);
-            }}
-            className="px-3 py-1.5 border border-border rounded-lg bg-input-background focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+      {/* Subtle toast overlay (does not shift layout) */}
+      <div className="pointer-events-none fixed top-20 right-10 z-20 flex flex-col items-end gap-2">
+        {showToast && status && (
+          <div
+            className={`flex items-center gap-2 rounded-full border px-3.5 py-2 text-[0.85rem] shadow-sm transition-opacity duration-200
+              ${isError ? "border-[var(--danger)] text-[var(--danger)] bg-[var(--panel)]" : "border-[var(--border)] text-[var(--muted)] bg-[var(--panel2)]"}`}
           >
-            <option value="default">default</option>
-            <option value="karaoke">karaoke</option>
-            <option value="minimal">minimal</option>
-          </select>
-        </label>
-
-        <div className="flex-1" />
-
-        <span className="text-xs text-muted-foreground">
-          {style.posX != null && style.posY != null
-            ? `pos=(${style.posX.toFixed(0)},${style.posY.toFixed(0)})`
-            : ""}
-          {videoRef.current?.videoWidth &&
-            videoRef.current?.videoHeight &&
-            `  video=${videoRef.current.videoWidth}×${videoRef.current.videoHeight}`}
-        </span>
+            <span
+              className={`inline-block h-2 w-2 rounded-full ${
+                isError ? "bg-[var(--danger)]" : "bg-[var(--accent)]/65"
+              }`}
+            />
+            <span className="text-[0.85rem] leading-tight">{status}</span>
+          </div>
+        )}
       </div>
 
-      {/* Status */}
-      {status && (
-        <div className="px-8 py-2">
-          <Message type={isError ? "error" : status.includes("✅") ? "success" : status.includes("Loading") || status.includes("Burning") || status.includes("Saving") ? "loading" : "info"}>
-            {status}
-          </Message>
-        </div>
-      )}
-
       {/* Video and Segments */}
-      <div className="flex-1 overflow-auto px-8 py-6">
+      <div className="flex-1 overflow-auto px-8 py-20">
         <div className="max-w-6xl mx-auto">
-          <div className="flex gap-4 items-center">
+          <div className="flex gap-8 items-center">
             {/* Left: Video Container */}
             <div className="flex-1">
-              <div className="relative w-full mb-8 flex justify-center">
-                <div className="relative" style={{ maxWidth: "500px", width: "100%" }}>
+              <div className="relative w-full mb-10 flex justify-center">
+                <div
+                  className="relative rounded-2xl bg-[var(--panel)] p-4 shadow-[var(--shadow)] border border-[var(--border)]"
+                  style={{ maxWidth: "500px", width: "100%" }}
+                >
                   <video
                     ref={videoRef}
                     controls
-                    className="w-full block bg-black rounded-lg"
+                    className="w-full block bg-black rounded-xl"
                   />
                   <div
                     ref={overlayRef}
@@ -609,13 +626,16 @@ export function PreviewScreen() {
                     ...patch,
                   }))
                 }
+                onPresetChange={applyPreset}
               />
             </div>
           </div>
 
-          {/* Segments - Card-based display matching Figma */}
-          <div className="mt-8">
-            <h2 className="mb-4">Segments</h2>
+          {/* Segments */}
+          <div className="mt-9">
+            <h2 className="mb-3 text-[0.82rem] font-medium uppercase tracking-[0.16em] text-[var(--muted)]">
+              Segments
+            </h2>
             {hasOverlappingSegments && (
               <div className="mb-4">
                 <Message type="error">
@@ -623,17 +643,17 @@ export function PreviewScreen() {
                 </Message>
               </div>
             )}
-            <div className="space-y-2">
+            <div className="space-y-3">
               {segments.map((seg, idx) => {
                 const isActive = currentTime >= Number(seg.start) && currentTime < Number(seg.end);
                 
                 return (
                   <div
                     key={idx}
-                    className={`px-6 py-4 rounded-lg border transition-all cursor-pointer ${
+                    className={`px-5 py-3.5 rounded-2xl border transition-all cursor-pointer ${
                       isActive
-                        ? "bg-accent border-accent shadow-sm"
-                        : "bg-card border-border hover:border-primary/30 hover:shadow-sm"
+                        ? "bg-[var(--panel2)] border-[var(--accent)] shadow-[var(--shadow)]"
+                        : "bg-[var(--panel)] border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--panel2)]"
                     }`}
                     onClick={() => jumpToSegment(Number(seg.start))}
                   >
@@ -643,7 +663,7 @@ export function PreviewScreen() {
                           e.stopPropagation();
                           jumpToSegment(Number(seg.start));
                         }}
-                        className="text-sm hover:scale-110 transition-transform flex-shrink-0 text-primary hover:text-foreground"
+                        className="text-sm hover:scale-110 transition-transform flex-shrink-0 text-secondary hover:text-foreground"
                         title="Jump to segment"
                       >
                         ▶
@@ -654,8 +674,10 @@ export function PreviewScreen() {
                           value={seg.text ?? ""}
                           onChange={(e) => updateSegment(idx, "text", e.target.value)}
                           onClick={(e) => e.stopPropagation()}
-                          className={`w-full bg-transparent border-none outline-none p-0 text-base focus:ring-2 focus:ring-primary/20 rounded ${
-                            isActive ? "text-foreground font-medium" : "text-secondary"
+                          className={`w-full bg-transparent border-none outline-none p-0 text-[0.95rem] tracking-[0.01em] leading-snug transition-colors focus:ring-2 focus:ring-[#4f2d7f2e] rounded ${
+                            isActive
+                              ? "text-foreground/95 font-medium"
+                              : "text-[var(--muted)]/85 font-normal"
                           }`}
                           placeholder="Enter text..."
                         />
@@ -667,7 +689,7 @@ export function PreviewScreen() {
                           value={formatNum(Number(seg.start))}
                           onChange={(e) => updateSegment(idx, "start", Number(e.target.value))}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-16 px-2 py-1 text-xs border border-border rounded-lg bg-background text-center focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                          className="w-16 px-2 py-1 text-[0.8rem] tabular-nums text-[var(--muted)] border border-[rgba(15,10,20,0.18)] rounded-lg bg-background text-center focus:outline-none focus:ring-2 focus:ring-[#4f2d7f2e] transition-all"
                           placeholder="0"
                         />
                         <span className="text-xs text-muted-foreground">→</span>
@@ -677,7 +699,7 @@ export function PreviewScreen() {
                           value={formatNum(Number(seg.end))}
                           onChange={(e) => updateSegment(idx, "end", Number(e.target.value))}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-16 px-2 py-1 text-xs border border-border rounded-lg bg-background text-center focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                          className="w-16 px-2 py-1 text-[0.8rem] tabular-nums text-[var(--muted)] border border-[rgba(15,10,20,0.18)] rounded-lg bg-background text-center focus:outline-none focus:ring-2 focus:ring-[#4f2d7f2e] transition-all"
                           placeholder="0"
                         />
                       </div>
