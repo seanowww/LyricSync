@@ -2,30 +2,44 @@
 
 :root {
   --font-size: 16px;
-  --background: #faf9f7;
-  --foreground: #1a1a1a;
-  --card: #ffffff;
-  --card-foreground: #1a1a1a;
-  --popover: #ffffff;
-  --popover-foreground: #1a1a1a;
-  --primary: #1a1a1a;
+
+  /* Deep Studio Black + Purple Voltage tokens */
+  --bg: #0E0E11;
+  --panel: #16161D;
+  --panel2: #1C1C26;
+  --border: #242430;
+  --text: #EDEDF2;
+  --muted: #A0A0B0;
+  --muted2: #7C7C92;
+  --accent: #6D5AE6;
+  --accentSoft: rgba(109, 90, 230, 0.15);
+  --danger: #EF4444;
+  --success: #22C55E;
+  --shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+
+  /* Map existing semantic tokens to dark theme */
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--panel);
+  --card-foreground: var(--text);
+  --popover: var(--panel2);
+  --popover-foreground: var(--text);
+  --primary: var(--accent);
   --primary-foreground: #ffffff;
-  --secondary: #6b6b6b;
-  --secondary-foreground: #1a1a1a;
-  --muted: #e5e5e5;
-  --muted-foreground: #6b6b6b;
-  --accent: #fef6d8;
-  --accent-foreground: #1a1a1a;
-  --accent-purple: #e8d5f5;
-  --destructive: #d4183d;
+  --secondary: var(--muted2);
+  --secondary-foreground: var(--text);
+  --muted-foreground: var(--muted);
+  --accent-foreground: #ffffff;
+  --accent-purple: var(--accent);
+  --destructive: var(--danger);
   --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.08);
+  --border: var(--border);
   --input: transparent;
-  --input-background: #ffffff;
-  --switch-background: #cbced4;
+  --input-background: var(--panel2);
+  --switch-background: #3A3A4A;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: rgba(0, 0, 0, 0.2);
+  --ring: var(--accentSoft);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -181,7 +195,7 @@
     line-height: 1.5;
   }
 
-  /* Custom slider styling - polished, professional look */
+  /* Custom slider styling - polished, studio look */
   input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
@@ -201,20 +215,18 @@
   input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    background: #5a7d9a; /* Warm blue-gray that complements beige/yellow theme */
+    background: #4f2d7f; /* deep studio purple */
     height: 18px;
     width: 18px;
     border-radius: 50%;
     border: 2px solid #ffffff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0 0 2px rgba(79, 45, 127, 0.18); /* subtle glow as single dramatic moment */
     margin-top: -6px;
-    transition: all 0.2s ease;
+    transition: box-shadow 0.2s ease;
   }
 
   input[type="range"]::-webkit-slider-thumb:hover {
-    background: #4a6d8a;
-    transform: scale(1.1);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 0 0 3px rgba(79, 45, 127, 0.18);
   }
 
   input[type="range"]::-moz-range-track {
@@ -225,19 +237,17 @@
   }
 
   input[type="range"]::-moz-range-thumb {
-    background: #5a7d9a;
+    background: #4f2d7f;
     height: 18px;
     width: 18px;
     border-radius: 50%;
     border: 2px solid #ffffff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0 0 2px rgba(79, 45, 127, 0.18);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: box-shadow 0.2s ease;
   }
 
   input[type="range"]::-moz-range-thumb:hover {
-    background: #4a6d8a;
-    transform: scale(1.1);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 0 0 3px rgba(79, 45, 127, 0.18);
   }
 }
