@@ -1,3 +1,12 @@
+# services/segments_store.py
+"""
+DEPRECATED: This module is kept for backward compatibility only.
+
+Segments are now stored in the database, not the filesystem.
+See src/models/segment.py and src/routes/segments.py for current implementation.
+
+This file can be removed once all filesystem-based segment storage is migrated.
+"""
 from pathlib import Path
 import json
 from datetime import datetime
@@ -9,16 +18,12 @@ SEGMENTS_DIR = BASE_STORAGE_DIR / "segments"
 
 
 def _ensure_segments_dir_exists() -> None:
-    """
-    Ensure that the segments storage directory exists.
-    """
+    """Ensure that the segments storage directory exists."""
     SEGMENTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _segments_file_path(video_id: str) -> Path:
-    """
-    Return the path to the segments JSON file for a given video_id.
-    """
+    """Return the path to the segments JSON file for a given video_id."""
     _ensure_segments_dir_exists()
     return SEGMENTS_DIR / f"{video_id}.json"
 
@@ -29,9 +34,10 @@ def save_segments(
     source: str = "unknown"
 ) -> None:
     """
-    Persist segments for a given video_id to disk (atomic write).
-
-    This function is the canonical way to write segment data.
+    DEPRECATED: Segments are now stored in the database.
+    
+    This function is kept for backward compatibility but should not be used.
+    Use database operations in src/routes/segments.py instead.
     """
     path = _segments_file_path(video_id)
     tmp_path = path.with_suffix(".json.tmp")
@@ -60,8 +66,11 @@ def save_segments(
 
 def load_segments(video_id: str) -> Dict[str, Any]:
     """
-    Load and return the full segment payload for a given video_id.
-
+    DEPRECATED: Segments are now loaded from the database.
+    
+    This function is kept for backward compatibility but should not be used.
+    Use database operations in src/routes/segments.py instead.
+    
     Raises FileNotFoundError if segments do not exist.
     """
     path = _segments_file_path(video_id)
