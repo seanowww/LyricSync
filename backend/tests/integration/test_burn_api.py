@@ -6,13 +6,15 @@ import pytest
 import tempfile
 import shutil
 import subprocess
+import uuid
 from pathlib import Path
 from fastapi.testclient import TestClient
 import sys
 
 # Imports work via conftest.py
 from src.main import app
-from src.services.segments_store import save_segments
+from src.models.video import Video
+from src.models.segment import SegmentRow
 
 
 @pytest.fixture
@@ -73,23 +75,34 @@ def test_video_path(temp_storage):
 
 
 @pytest.fixture
-def video_id_with_upload(temp_storage, test_video_path):
-    """Create a video_id with uploaded video file"""
-    video_id = "burn-test-video"
+def video_id_with_upload(temp_storage, test_video_path, test_db, test_video_and_owner_key):
+    """Create a video_id with uploaded video file and database records"""
+    video_id_str, owner_key = test_video_and_owner_key
+    video_id_uuid = uuid.UUID(video_id_str)
     
     # Copy test video to uploads directory
-    from src.main import UPLOAD_DIR
-    upload_path = UPLOAD_DIR / f"{video_id}.mp4"
+    from src.services.storage import UPLOAD_DIR
+    upload_path = UPLOAD_DIR / f"{video_id_str}.mp4"
     shutil.copy(test_video_path, upload_path)
     
-    # Create segments
+    # Create segments in database
     segments = [
         {"id": 0, "start": 0.0, "end": 2.5, "text": "First subtitle"},
         {"id": 1, "start": 2.5, "end": 5.0, "text": "Second subtitle"},
     ]
-    save_segments(video_id, segments, source="test")
     
-    return video_id
+    for seg in segments:
+        segment_row = SegmentRow(
+            video_id=video_id_uuid,
+            id=seg["id"],
+            start=seg["start"],
+            end=seg["end"],
+            text=seg["text"]
+        )
+        test_db.add(segment_row)
+    test_db.commit()
+    
+    return video_id_str, owner_key
 
 
 @pytest.fixture
@@ -103,8 +116,9 @@ class TestBurnVideo:
 
     def test_burn_returns_mp4(self, client, video_id_with_upload):
         """Should return an MP4 file with correct content-type"""
+        video_id, owner_key = video_id_with_upload
         payload = {
-            "video_id": video_id_with_upload,
+            "video_id": video_id,
             "segments": [
                 {"id": 0, "start": 0.0, "end": 2.5, "text": "Test subtitle"},
             ],
@@ -121,7 +135,11 @@ class TestBurnVideo:
             },
         }
         
-        response = client.post("/api/burn", json=payload)
+        response = client.post(
+            "/api/burn",
+            json=payload,
+            headers={"X-Owner-Key": owner_key}
+        )
         assert response.status_code == 200
         # Backend returns "video/*" as content-type (see main.py line ~399)
         assert response.headers["content-type"] == "video/*"
@@ -134,22 +152,28 @@ class TestBurnVideo:
 
     def test_burn_with_default_style(self, client, video_id_with_upload):
         """Should work with minimal style (defaults applied)"""
+        video_id, owner_key = video_id_with_upload
         payload = {
-            "video_id": video_id_with_upload,
+            "video_id": video_id,
             "segments": [
                 {"id": 0, "start": 0.0, "end": 2.5, "text": "Default style"},
             ],
         }
         
-        response = client.post("/api/burn", json=payload)
+        response = client.post(
+            "/api/burn",
+            json=payload,
+            headers={"X-Owner-Key": owner_key}
+        )
         assert response.status_code == 200
         # Backend returns "video/*" as content-type
         assert response.headers["content-type"] == "video/*"
 
     def test_burn_with_bold_style(self, client, video_id_with_upload):
         """Should work with bold font style"""
+        video_id, owner_key = video_id_with_upload
         payload = {
-            "video_id": video_id_with_upload,
+            "video_id": video_id,
             "segments": [
                 {"id": 0, "start": 0.0, "end": 2.5, "text": "Bold text"},
             ],
@@ -160,15 +184,20 @@ class TestBurnVideo:
             },
         }
         
-        response = client.post("/api/burn", json=payload)
+        response = client.post(
+            "/api/burn",
+            json=payload,
+            headers={"X-Owner-Key": owner_key}
+        )
         assert response.status_code == 200
         assert response.headers["content-type"] == "video/*"
         assert len(response.content) > 1000
 
     def test_burn_with_italic_style(self, client, video_id_with_upload):
         """Should work with italic font style"""
+        video_id, owner_key = video_id_with_upload
         payload = {
-            "video_id": video_id_with_upload,
+            "video_id": video_id,
             "segments": [
                 {"id": 0, "start": 0.0, "end": 2.5, "text": "Italic text"},
             ],
@@ -179,15 +208,20 @@ class TestBurnVideo:
             },
         }
         
-        response = client.post("/api/burn", json=payload)
+        response = client.post(
+            "/api/burn",
+            json=payload,
+            headers={"X-Owner-Key": owner_key}
+        )
         assert response.status_code == 200
         assert response.headers["content-type"] == "video/*"
         assert len(response.content) > 1000
 
     def test_burn_with_bold_italic_style(self, client, video_id_with_upload):
         """Should work with bold+italic font style"""
+        video_id, owner_key = video_id_with_upload
         payload = {
-            "video_id": video_id_with_upload,
+            "video_id": video_id,
             "segments": [
                 {"id": 0, "start": 0.0, "end": 2.5, "text": "Bold Italic text"},
             ],
@@ -198,18 +232,23 @@ class TestBurnVideo:
             },
         }
         
-        response = client.post("/api/burn", json=payload)
+        response = client.post(
+            "/api/burn",
+            json=payload,
+            headers={"X-Owner-Key": owner_key}
+        )
         assert response.status_code == 200
         assert response.headers["content-type"] == "video/*"
         assert len(response.content) > 1000
 
     def test_burn_with_different_fonts(self, client, video_id_with_upload):
         """Should work with different font families"""
+        video_id, owner_key = video_id_with_upload
         fonts = ["Inter", "Arial", "Georgia", "Helvetica", "Times New Roman"]
         
         for font in fonts:
             payload = {
-                "video_id": video_id_with_upload,
+                "video_id": video_id,
                 "segments": [
                     {"id": 0, "start": 0.0, "end": 2.5, "text": f"Text in {font}"},
                 ],
@@ -220,7 +259,11 @@ class TestBurnVideo:
                 },
             }
             
-            response = client.post("/api/burn", json=payload)
+            response = client.post(
+                "/api/burn",
+                json=payload,
+                headers={"X-Owner-Key": owner_key}
+            )
             assert response.status_code == 200, f"Failed for font {font}"
             assert response.headers["content-type"] == "video/*"
             assert len(response.content) > 1000
@@ -236,10 +279,73 @@ class TestBurnVideo:
 
     def test_burn_empty_segments(self, client, video_id_with_upload):
         """Should return 400 for empty segments"""
+        video_id, owner_key = video_id_with_upload
         payload = {
-            "video_id": video_id_with_upload,
+            "video_id": video_id,
             "segments": [],
         }
-        response = client.post("/api/burn", json=payload)
+        response = client.post(
+            "/api/burn",
+            json=payload,
+            headers={"X-Owner-Key": owner_key}
+        )
         assert response.status_code == 400
+
+    def test_burn_large_video_size(self, client, temp_storage, test_db, test_video_and_owner_key):
+        """Should handle large video sizes (1920x1080)"""
+        video_id_str, owner_key = test_video_and_owner_key
+        video_id_uuid = uuid.UUID(video_id_str)
+        
+        # Generate large test video (1920x1080, 5 seconds)
+        from src.services.storage import UPLOAD_DIR
+        large_video_path = UPLOAD_DIR / f"{video_id_str}.mp4"
+        
+        cmd = [
+            "ffmpeg", "-y",
+            "-f", "lavfi",
+            "-i", "color=c=blue:s=1920x1080:d=5",
+            "-c:v", "libx264",
+            "-pix_fmt", "yuv420p",
+            str(large_video_path),
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            pytest.skip(f"ffmpeg not available or failed: {result.stderr}")
+        
+        # Create segments
+        segment_row = SegmentRow(
+            video_id=video_id_uuid,
+            id=0,
+            start=0.0,
+            end=2.5,
+            text="Large video test"
+        )
+        test_db.add(segment_row)
+        test_db.commit()
+        
+        payload = {
+            "video_id": video_id_str,
+            "segments": [
+                {"id": 0, "start": 0.0, "end": 2.5, "text": "Large video test"},
+            ],
+            "style": {
+                "fontSizePx": 48,  # Large font for large video
+                "posX": 960,  # Center of 1920px width
+                "posY": 950,  # Near bottom of 1080px height
+            },
+        }
+        
+        response = client.post(
+            "/api/burn",
+            json=payload,
+            headers={"X-Owner-Key": owner_key}
+        )
+        
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "video/*"
+        assert len(response.content) > 1000
+        
+        # Verify output resolution is preserved (check with ffprobe if available)
+        # This is a basic test - full verification would require extracting frame
 
