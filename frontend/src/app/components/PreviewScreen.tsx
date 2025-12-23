@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { getVideoUrl, getSegments, updateSegments, burnVideo, downloadBlob } from "../../lib/api";
 import type { Segment, Style } from "../../lib/types";
 import { TextStylingPanel } from "./ui/text-styling-panel";
+import { getOwnerKey } from "../../lib/auth";
 
 export function PreviewScreen() {
   const [searchParams] = useSearchParams();
@@ -12,6 +13,7 @@ export function PreviewScreen() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const rafIdRef = useRef<number | null>(null);
+  const videoBlobUrlRef = useRef<string | null>(null); // Store blob URL for cleanup
 
   const [segments, setSegments] = useState<Segment[]>([]);
   const [status, setStatus] = useState<string>("");
@@ -283,7 +285,7 @@ export function PreviewScreen() {
     rafIdRef.current = requestAnimationFrame(tick);
   }, [segments]);
 
-  // Load initial data
+  // Load initial data (segments and video)
   useEffect(() => {
     if (!videoId) {
       setStatus("Missing video_id in URL. Go back and upload again.");
@@ -291,19 +293,45 @@ export function PreviewScreen() {
       return;
     }
 
+    // Check for owner key
+    if (!getOwnerKey()) {
+      setStatus("Owner key not found. Please upload a video first.");
+      setIsError(true);
+      return;
+    }
+
     const loadData = async () => {
       try {
+        // Load video URL (async - fetches with X-Owner-Key header and creates blob URL)
+        setStatus("Loading video...");
+        const videoUrl = await getVideoUrl(videoId);
+        videoBlobUrlRef.current = videoUrl; // Store for cleanup
+        
+        // Update video element src
+        if (videoRef.current) {
+          videoRef.current.src = videoUrl;
+        }
+
+        // Load segments
         setStatus("Loading segments...");
         const data = await getSegments(videoId);
         setSegments(data.segments || []);
         setStatus(`Loaded ${data.segments?.length || 0} segments.`);
       } catch (err) {
-        setStatus(`Failed to load segments: ${err instanceof Error ? err.message : String(err)}`);
+        setStatus(`Failed to load: ${err instanceof Error ? err.message : String(err)}`);
         setIsError(true);
       }
     };
 
     loadData();
+
+    // Cleanup: Revoke blob URL when component unmounts or videoId changes
+    return () => {
+      if (videoBlobUrlRef.current) {
+        URL.revokeObjectURL(videoBlobUrlRef.current);
+        videoBlobUrlRef.current = null;
+      }
+    };
   }, [videoId]);
 
   // Video metadata loaded - set default position once
@@ -552,7 +580,6 @@ export function PreviewScreen() {
                 <div className="relative" style={{ maxWidth: "500px", width: "100%" }}>
                   <video
                     ref={videoRef}
-                    src={getVideoUrl(videoId)}
                     controls
                     className="w-full block bg-black rounded-lg"
                   />
