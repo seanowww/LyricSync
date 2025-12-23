@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { transcribe } from "../../lib/api";
 import { setOwnerKey } from "../../lib/auth";
+import { Message } from "./ui/message";
 
 export function UploadScreen() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -149,7 +150,7 @@ export function UploadScreen() {
           <button
             onClick={handleUpload}
             disabled={isUploading || !selectedFileName}
-            className="px-8 py-3 bg-accent hover:bg-accent/80 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-8 py-3 bg-accent hover:bg-accent/90 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isUploading ? "Uploading..." : "Upload & Transcribe"}
           </button>
@@ -157,8 +158,20 @@ export function UploadScreen() {
 
         {/* Status */}
         {status && (
-          <div className="text-center text-sm text-muted-foreground mt-4">
-            {status}
+          <div className="mt-4">
+            <Message
+              type={
+                status.includes("failed") || status.includes("Unexpected")
+                  ? "error"
+                  : status.includes("Uploading") || status.includes("processing")
+                  ? "loading"
+                  : status.includes("complete")
+                  ? "success"
+                  : "info"
+              }
+            >
+              {status}
+            </Message>
           </div>
         )}
       </div>

@@ -182,11 +182,16 @@ def burn_video_with_subtitles(
 
     # FFmpeg command
     # WHY: Uses subtitles filter with fontsdir to load custom fonts
-    vf = f"subtitles={str(ass_path)}:fontsdir={str(FONTS_DIR)}"
+    # IMPORTANT: Preserve original video resolution by using scale filter
+    # The subtitles filter can sometimes change resolution, so we explicitly scale to original
+    vf = f"subtitles={str(ass_path)}:fontsdir={str(FONTS_DIR)},scale={play_res_x}:{play_res_y}"
     ffmpeg_cmd = [
         "ffmpeg", "-y",
         "-i", str(input_path),
         "-vf", vf,
+        "-c:v", "libx264",  # Re-encode video to ensure resolution is preserved
+        "-preset", "medium",  # Balance between speed and quality
+        "-crf", "23",  # Good quality (lower = better quality, 18-28 is typical range)
         "-c:a", "copy",  # Copy audio without re-encoding
         str(output_path),
     ]

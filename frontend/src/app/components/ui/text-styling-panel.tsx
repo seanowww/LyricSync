@@ -116,10 +116,10 @@ export function TextStylingPanel({ value, onChange }: TextStylingPanelProps) {
           <button
             type="button"
             onClick={() => onChange({ bold: !value.bold })}
-            className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${
+            className={`flex-1 px-4 py-2 rounded-lg border transition-all ${
               value.bold
-                ? "bg-accent border-accent"
-                : "bg-card border-border hover:border-primary/20"
+                ? "bg-accent border-accent font-medium"
+                : "bg-card border-border hover:border-primary/30 hover:bg-muted/50"
             }`}
           >
             Bold
@@ -128,10 +128,10 @@ export function TextStylingPanel({ value, onChange }: TextStylingPanelProps) {
           <button
             type="button"
             onClick={() => onChange({ italic: !value.italic })}
-            className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${
+            className={`flex-1 px-4 py-2 rounded-lg border transition-all ${
               value.italic
-                ? "bg-accent border-accent"
-                : "bg-card border-border hover:border-primary/20"
+                ? "bg-accent border-accent font-medium"
+                : "bg-card border-border hover:border-primary/30 hover:bg-muted/50"
             }`}
           >
             Italic

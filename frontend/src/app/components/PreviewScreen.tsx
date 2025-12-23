@@ -4,6 +4,7 @@ import { getVideoUrl, getSegments, updateSegments, burnVideo, downloadBlob } fro
 import type { Segment, Style } from "../../lib/types";
 import { TextStylingPanel } from "./ui/text-styling-panel";
 import { getOwnerKey } from "../../lib/auth";
+import { Message } from "./ui/message";
 
 export function PreviewScreen() {
   const [searchParams] = useSearchParams();
@@ -511,7 +512,7 @@ export function PreviewScreen() {
       <div className="border-b border-border px-8 py-6 flex items-center justify-between">
         <button
           onClick={() => navigate("/")}
-          className="text-secondary hover:text-primary transition-colors"
+          className="text-secondary hover:text-primary transition-colors px-3 py-1.5 rounded-lg hover:bg-muted/50"
         >
           ← Back
         </button>
@@ -520,14 +521,14 @@ export function PreviewScreen() {
           <button
             onClick={handleSave}
             disabled={isSaving || isBurning || hasOverlappingSegments}
-            className="px-6 py-2 border border-border rounded-lg hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 border border-border rounded-lg hover:bg-muted/50 hover:border-primary/30 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Save
           </button>
           <button
             onClick={handleBurn}
             disabled={isSaving || isBurning || hasOverlappingSegments}
-            className="px-6 py-2 bg-accent-purple hover:bg-accent-purple/80 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-accent-purple hover:bg-accent-purple/90 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Burn MP4
           </button>
@@ -543,7 +544,7 @@ export function PreviewScreen() {
             onChange={(e) => {
               applyPreset(e.target.value);
             }}
-            className="px-3 py-1 border border-border rounded"
+            className="px-3 py-1.5 border border-border rounded-lg bg-input-background focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
           >
             <option value="default">default</option>
             <option value="karaoke">karaoke</option>
@@ -565,8 +566,10 @@ export function PreviewScreen() {
 
       {/* Status */}
       {status && (
-        <div className={`px-8 py-2 ${isError ? "text-red-600" : "text-foreground"}`}>
-          {status}
+        <div className="px-8 py-2">
+          <Message type={isError ? "error" : status.includes("✅") ? "success" : status.includes("Loading") || status.includes("Burning") || status.includes("Saving") ? "loading" : "info"}>
+            {status}
+          </Message>
         </div>
       )}
 
@@ -614,8 +617,10 @@ export function PreviewScreen() {
           <div className="mt-8">
             <h2 className="mb-4">Segments</h2>
             {hasOverlappingSegments && (
-              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-400 rounded text-yellow-800 text-sm">
-                Warning: Overlapping segments detected. Please adjust timings before saving or burning.
+              <div className="mb-4">
+                <Message type="error">
+                  Warning: Overlapping segments detected. Please adjust timings before saving or burning.
+                </Message>
               </div>
             )}
             <div className="space-y-2">
@@ -625,16 +630,20 @@ export function PreviewScreen() {
                 return (
                   <div
                     key={idx}
-                    className={`px-6 py-4 rounded-lg border transition-all ${
+                    className={`px-6 py-4 rounded-lg border transition-all cursor-pointer ${
                       isActive
-                        ? "bg-accent border-accent"
-                        : "bg-card border-border hover:border-primary/20"
+                        ? "bg-accent border-accent shadow-sm"
+                        : "bg-card border-border hover:border-primary/30 hover:shadow-sm"
                     }`}
+                    onClick={() => jumpToSegment(Number(seg.start))}
                   >
                     <div className="flex items-center gap-4">
                       <button
-                        onClick={() => jumpToSegment(Number(seg.start))}
-                        className="text-sm hover:scale-110 transition-transform flex-shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          jumpToSegment(Number(seg.start));
+                        }}
+                        className="text-sm hover:scale-110 transition-transform flex-shrink-0 text-primary hover:text-foreground"
                         title="Jump to segment"
                       >
                         ▶
@@ -644,7 +653,8 @@ export function PreviewScreen() {
                           type="text"
                           value={seg.text ?? ""}
                           onChange={(e) => updateSegment(idx, "text", e.target.value)}
-                          className={`w-full bg-transparent border-none outline-none p-0 text-base ${
+                          onClick={(e) => e.stopPropagation()}
+                          className={`w-full bg-transparent border-none outline-none p-0 text-base focus:ring-2 focus:ring-primary/20 rounded ${
                             isActive ? "text-foreground font-medium" : "text-secondary"
                           }`}
                           placeholder="Enter text..."
@@ -656,7 +666,8 @@ export function PreviewScreen() {
                           step="0.01"
                           value={formatNum(Number(seg.start))}
                           onChange={(e) => updateSegment(idx, "start", Number(e.target.value))}
-                          className="w-16 px-2 py-1 text-xs border border-border rounded bg-background text-center"
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-16 px-2 py-1 text-xs border border-border rounded-lg bg-background text-center focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                           placeholder="0"
                         />
                         <span className="text-xs text-muted-foreground">→</span>
@@ -665,7 +676,8 @@ export function PreviewScreen() {
                           step="0.01"
                           value={formatNum(Number(seg.end))}
                           onChange={(e) => updateSegment(idx, "end", Number(e.target.value))}
-                          className="w-16 px-2 py-1 text-xs border border-border rounded bg-background text-center"
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-16 px-2 py-1 text-xs border border-border rounded-lg bg-background text-center focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                           placeholder="0"
                         />
                       </div>
