@@ -6,8 +6,30 @@ import type {
   SegmentsUpdateRequest,
   BurnRequest,
 } from "./types";
+import { getOwnerKey } from "./auth";
 
 const API_BASE = "/api";
+
+/**
+ * Build headers for API requests, including X-Owner-Key if available.
+ * 
+ * WHY: All endpoints (except /transcribe) require X-Owner-Key header.
+ * This centralizes header construction.
+ */
+function buildHeaders(customHeaders: Record<string, string> = {}): HeadersInit {
+  const headers: HeadersInit = {
+    ...customHeaders,
+  };
+
+  // Add X-Owner-Key header if owner key is available
+  // WHY: Backend requires this for authorization
+  const ownerKey = getOwnerKey();
+  if (ownerKey) {
+    headers["X-Owner-Key"] = ownerKey;
+  }
+
+  return headers;
+}
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -29,13 +51,43 @@ export async function transcribe(file: File): Promise<TranscribeResponse> {
   return handleResponse<TranscribeResponse>(response);
 }
 
-export function getVideoUrl(videoId: string): string {
-  return `${API_BASE}/video/${encodeURIComponent(videoId)}`;
+/**
+ * Get video URL as a blob URL (required because video element can't send custom headers).
+ * 
+ * WHY: Backend requires X-Owner-Key header, but HTML <video> elements can't send custom headers.
+ * Solution: Fetch video with header, create blob URL, return that.
+ * 
+ * NOTE: Caller should revoke the URL when done using URL.revokeObjectURL(url)
+ */
+export async function getVideoUrl(videoId: string): Promise<string> {
+  const ownerKey = getOwnerKey();
+  if (!ownerKey) {
+    throw new Error("Owner key not found. Please upload a video first.");
+  }
+
+  const response = await fetch(
+    `${API_BASE}/video/${encodeURIComponent(videoId)}`,
+    {
+      headers: buildHeaders(),
+    }
+  );
+
+  if (!response.ok) {
+    const msg = await response.text().catch(() => response.statusText);
+    throw new Error(`Failed to load video (${response.status}): ${msg}`);
+  }
+
+  // Create blob URL from response
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
 }
 
 export async function getSegments(videoId: string): Promise<SegmentsResponse> {
   const response = await fetch(
-    `${API_BASE}/segments/${encodeURIComponent(videoId)}`
+    `${API_BASE}/segments/${encodeURIComponent(videoId)}`,
+    {
+      headers: buildHeaders(),
+    }
   );
   return handleResponse<SegmentsResponse>(response);
 }
@@ -48,7 +100,7 @@ export async function updateSegments(
     `${API_BASE}/segments/${encodeURIComponent(videoId)}`,
     {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: buildHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(data),
     }
   );
@@ -60,7 +112,7 @@ export async function burnVideo(
 ): Promise<Blob> {
   const response = await fetch(`${API_BASE}/burn`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: buildHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(data),
   });
 

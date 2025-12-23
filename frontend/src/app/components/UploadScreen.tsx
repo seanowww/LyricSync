@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { transcribe } from "../../lib/api";
+import { setOwnerKey } from "../../lib/auth";
 
 export function UploadScreen() {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -22,12 +23,24 @@ export function UploadScreen() {
     try {
       const data = await transcribe(file);
       const videoId = data.video_id;
+      const ownerKey = data.owner_key;
 
       if (!videoId) {
         setStatus("Unexpected response: missing video_id");
         setIsUploading(false);
         return;
       }
+
+      if (!ownerKey) {
+        setStatus("Unexpected response: missing owner_key");
+        setIsUploading(false);
+        return;
+      }
+
+      // Store owner key in sessionStorage for future API calls
+      // WHY: All subsequent API calls (getSegments, updateSegments, burnVideo, getVideo)
+      // require X-Owner-Key header. Storing it here ensures it's available.
+      setOwnerKey(ownerKey);
 
       setStatus("Upload complete. Redirecting to preview...");
       navigate(`/preview?video_id=${encodeURIComponent(videoId)}`);

@@ -26,6 +26,7 @@ export interface Style {
 
 export interface TranscribeResponse {
   video_id: string;
+  owner_key: string;  // Owner key for accessing this video (store in sessionStorage)
   segments: Segment[];
 }
 
