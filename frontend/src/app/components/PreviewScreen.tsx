@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { getVideoUrl, getSegments, updateSegments, burnVideo, downloadBlob } from "../../lib/api";
 import type { Segment, Style } from "../../lib/types";
-import { TextStylingPanel } from "./ui/text-styling-panel";
+import { TextStylingDock } from "./ui/text-styling-dock";
 import { getOwnerKey } from "../../lib/auth";
 import { Message } from "./ui/message";
 
@@ -565,7 +565,7 @@ export function PreviewScreen() {
            shadow-[var(--shadow)]
            transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Burn MP4
+            Export
           </button>
         </div>
       </div>
@@ -587,16 +587,19 @@ export function PreviewScreen() {
         )}
       </div>
 
-      {/* Video and Segments */}
-      <div className="flex-1 overflow-auto px-8 py-20">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex gap-8 items-center">
+      {/* Grid Layout: Left video, Right unified sidebar */}
+      <div
+        className="flex-1 overflow-auto px-8 py-20"
+        style={{ minHeight: 0 }}
+      >
+        <div className="max-w-6xl mx-auto">
+          <div className="grid gap-8 items-start" style={{ gridTemplateColumns: "minmax(0, 1fr) 500px" }}>
             {/* Left: Video Container */}
-            <div className="flex-1">
-              <div className="relative w-full mb-10 flex justify-center">
+            <div className="min-w-0">
+              <div className="relative w-full my-10 flex justify-center">
                 <div
                   className="relative rounded-2xl bg-[var(--panel)] p-4 shadow-[var(--shadow)] border border-[var(--border)]"
-                  style={{ maxWidth: "500px", width: "100%" }}
+                  style={{ maxWidth: "420px", width: "100%" }}
                 >
                   <video
                     ref={videoRef}
@@ -609,104 +612,138 @@ export function PreviewScreen() {
                     onTouchStart={startDrag}
                     className="absolute left-0 top-0"
                     style={{ padding: "0 16px" }}
-                    // Data attribute for debugging/sanity check - shows current fontFamily
                     data-font-family={style.fontFamily ?? "Inter"}
                   />
                 </div>
               </div>
             </div>
 
-            {/* Right: Text Styling Panel - Vertically centered */}
-            <div className="flex-shrink-0 self-center pr-10">
-              <TextStylingPanel
-                value={style}
-                onChange={(patch) =>
-                  setStyle((prev) => ({
-                    ...prev,
-                    ...patch,
-                  }))
-                }
-                onPresetChange={applyPreset}
-              />
-            </div>
-          </div>
-
-          {/* Segments */}
-          <div className="mt-9">
-            <h2 className="mb-3 text-[0.82rem] font-medium uppercase tracking-[0.16em] text-[var(--muted)]">
-              Segments
-            </h2>
-            {hasOverlappingSegments && (
-              <div className="mb-4">
-                <Message type="error">
-                  Warning: Overlapping segments detected. Please adjust timings before saving or burning.
-                </Message>
+            {/* Right: Unified Sidebar Panel */}
+            {/* 
+              WHY min-h-0: In flexbox/grid, flex-1 children can overflow their container.
+              min-h-0 allows the flex-1 lyrics container to shrink below its content size,
+              enabling overflow-auto to create a scrollbar instead of expanding the parent.
+            */}
+            <div className = "py-20">
+            <aside className="min-w-0 flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-[var(--shadow)]">
+              {/* Header */}
+              <div className="px-6 py-6 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+                <h2 className="text-[0.82rem] font-medium uppercase tracking-[0.16em] text-[var(--muted)]">
+                  Lyrics
+                </h2>
+                <span className="text-[0.7rem] text-[var(--muted)]/60 tabular-nums">
+                  {segments.length} {segments.length === 1 ? "line" : "lines"}
+                </span>
               </div>
-            )}
-            <div className="space-y-3">
-              {segments.map((seg, idx) => {
-                const isActive = currentTime >= Number(seg.start) && currentTime < Number(seg.end);
-                
-                return (
-                  <div
-                    key={idx}
-                    className={`px-5 py-3.5 rounded-2xl border transition-all cursor-pointer ${
-                      isActive
-                        ? "bg-[var(--panel2)] border-[var(--accent)] shadow-[var(--shadow)]"
-                        : "bg-[var(--panel)] border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--panel2)]"
-                    }`}
-                    onClick={() => jumpToSegment(Number(seg.start))}
-                  >
-                    <div className="flex items-center gap-4">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          jumpToSegment(Number(seg.start));
-                        }}
-                        className="text-sm hover:scale-110 transition-transform flex-shrink-0 text-secondary hover:text-foreground"
-                        title="Jump to segment"
-                      >
-                        ▶
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <input
-                          type="text"
-                          value={seg.text ?? ""}
-                          onChange={(e) => updateSegment(idx, "text", e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          className={`w-full bg-transparent border-none outline-none p-0 text-[0.95rem] tracking-[0.01em] leading-snug transition-colors focus:ring-2 focus:ring-[#4f2d7f2e] rounded ${
-                            isActive
-                              ? "text-foreground/95 font-medium"
-                              : "text-[var(--muted)]/85 font-normal"
-                          }`}
-                          placeholder="Enter text..."
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formatNum(Number(seg.start))}
-                          onChange={(e) => updateSegment(idx, "start", Number(e.target.value))}
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-16 px-2 py-1 text-[0.8rem] tabular-nums text-[var(--muted)] border border-[rgba(15,10,20,0.18)] rounded-lg bg-background text-center focus:outline-none focus:ring-2 focus:ring-[#4f2d7f2e] transition-all"
-                          placeholder="0"
-                        />
-                        <span className="text-xs text-muted-foreground">→</span>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formatNum(Number(seg.end))}
-                          onChange={(e) => updateSegment(idx, "end", Number(e.target.value))}
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-16 px-2 py-1 text-[0.8rem] tabular-nums text-[var(--muted)] border border-[rgba(15,10,20,0.18)] rounded-lg bg-background text-center focus:outline-none focus:ring-2 focus:ring-[#4f2d7f2e] transition-all"
-                          placeholder="0"
-                        />
-                      </div>
-                    </div>
+
+              {/* Scrollable Lyrics List */}
+              {/* 
+                WHY flex-1 + min-h-0: flex-1 makes this take all remaining space.
+                min-h-0 ensures it can shrink and trigger overflow-auto scrolling
+                when content exceeds available height.
+              */}
+              <div className="flex-1 min-h-0 overflow-auto px-6 py-3">
+                {hasOverlappingSegments && (
+                  <div className="mb-3">
+                    <Message type="error">
+                      Warning: Overlapping segments detected. Please adjust timings before saving or burning.
+                    </Message>
                   </div>
-                );
-              })}
+                )}
+                <div className="space-y-1.5">
+                  {segments.map((seg, idx) => {
+                    const isActive = currentTime >= Number(seg.start) && currentTime < Number(seg.end);
+                    
+                    return (
+                      <div
+                        key={idx}
+                        className={`px-3 py-2 rounded-lg border transition-all cursor-pointer ${
+                          isActive
+                            ? "bg-[var(--panel2)] border-[var(--accent)]/60 shadow-[0_0_0_1px_rgba(109,90,230,0.2)]"
+                            : "bg-transparent border-white/10 hover:border-white/20 hover:bg-[rgba(255,255,255,0.02)]"
+                        }`}
+                        onClick={() => jumpToSegment(Number(seg.start))}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              jumpToSegment(Number(seg.start));
+                            }}
+                            className="text-[0.7rem] hover:scale-110 transition-transform flex-shrink-0 text-[var(--muted)]/70 hover:text-[var(--text)]"
+                            title="Jump to segment"
+                          >
+                            ▶
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <input
+                              type="text"
+                              value={seg.text ?? ""}
+                              onChange={(e) => updateSegment(idx, "text", e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              className={`w-full bg-transparent border-none outline-none p-0 text-[0.9rem] tracking-[0.01em] leading-snug transition-colors focus:ring-2 focus:ring-[#4f2d7f2e] rounded ${
+                                isActive
+                                  ? "text-[var(--text)]/95 font-medium"
+                                  : "text-[var(--muted)]/80 font-normal"
+                              }`}
+                              placeholder="Enter text..."
+                            />
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={formatNum(Number(seg.start))}
+                              onChange={(e) => updateSegment(idx, "start", Number(e.target.value))}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-12 px-1.5 py-0.5 text-[0.65rem] tabular-nums text-[var(--muted)]/70 border border-white/10 rounded bg-[var(--panel2)] text-center focus:outline-none focus:ring-1 focus:ring-[#4f2d7f2e] transition-all"
+                              placeholder="0"
+                            />
+                            <span className="text-[0.6rem] text-[var(--muted)]/40">→</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={formatNum(Number(seg.end))}
+                              onChange={(e) => updateSegment(idx, "end", Number(e.target.value))}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-12 px-1.5 py-0.5 text-[0.65rem] tabular-nums text-[var(--muted)]/70 border border-white/10 rounded bg-[var(--panel2)] text-center focus:outline-none focus:ring-1 focus:ring-[#4f2d7f2e] transition-all"
+                              placeholder="0"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Divider - Subtle separator */}
+              <div className="border-t border-white/10 flex-shrink-0" />
+
+              {/* Bottom Dock: Fixed height with internal scrolling */}
+              {/* 
+                WHY fixed height: Dock has a fixed height (200px) so lyrics list
+                gets all remaining vertical space. Dock's internal content can scroll
+                if controls exceed the fixed height.
+              */}
+              <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+                <h2 className="text-[0.82rem] font-medium uppercase tracking-[0.16em] text-[var(--muted)]">
+                  Edit
+                </h2>
+              </div>
+              <div className="h-[260px] min-h-[200px] flex-shrink-0 px-6 py-3">
+                <TextStylingDock
+                  value={style}
+                  onChange={(patch) =>
+                    setStyle((prev) => ({
+                      ...prev,
+                      ...patch,
+                    }))
+                  }
+                  onPresetChange={applyPreset}
+                />
+              </div>
+            </aside>
             </div>
           </div>
         </div>
