@@ -1,6 +1,10 @@
 """
 Golden-image snapshot tests for burned video output.
-Extracts frames from burned videos and compares to stored golden images.
+
+Current behavior:
+- Segments live in the database (not JSON files).
+- /api/burn reads segments from DB using video_id + owner_key.
+This test mirrors that flow by creating DB rows instead of writing JSON.
 """
 import pytest
 import tempfile
@@ -10,11 +14,10 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 from PIL import Image
 import numpy as np
-import sys
+import uuid
 
-# Imports work via conftest.py
 from src.main import app
-from src.services.segments_store import save_segments
+from src.models.segment import SegmentRow
 
 
 @pytest.fixture
@@ -27,14 +30,12 @@ def temp_storage():
     
     # Monkey-patch storage directories
     from src import main as main_module
-    from src.services import segments_store as store_module
     
     original_upload = main_module.UPLOAD_DIR
     original_tmp = main_module.TMP_DIR
     original_output = main_module.OUTPUT_DIR
     original_segments = main_module.SEGMENTS_DIR
     original_fonts = main_module.FONTS_DIR
-    original_segments_store = store_module.SEGMENTS_DIR
     
     main_module.UPLOAD_DIR = storage_dir / "uploads"
     main_module.TMP_DIR = storage_dir / "tmp"
@@ -42,7 +43,6 @@ def temp_storage():
     main_module.SEGMENTS_DIR = storage_dir / "segments"
     # Use actual fonts dir for tests
     main_module.FONTS_DIR = Path(__file__).parent.parent.parent / "src" / "assets" / "fonts"
-    store_module.SEGMENTS_DIR = storage_dir / "segments"
     
     yield temp_dir
     
@@ -52,7 +52,6 @@ def temp_storage():
     main_module.OUTPUT_DIR = original_output
     main_module.SEGMENTS_DIR = original_segments
     main_module.FONTS_DIR = original_fonts
-    store_module.SEGMENTS_DIR = original_segments_store
     shutil.rmtree(temp_dir)
 
 
@@ -79,24 +78,38 @@ def test_video_path(temp_storage):
 
 
 @pytest.fixture
-def video_id_with_upload(temp_storage, test_video_path):
-    """Create video_id with uploaded video"""
-    video_id = "golden-test"
+def video_id_with_upload(temp_storage, test_video_path, test_db, test_video_and_owner_key):
+    """
+    Create video + uploaded video file + DB segments for golden tests.
     
+    Returns:
+        (video_id_str, owner_key)
+    """
+    video_id_str, owner_key = test_video_and_owner_key
+    video_uuid = uuid.UUID(video_id_str)
+
     from src.main import UPLOAD_DIR
-    upload_path = UPLOAD_DIR / f"{video_id}.mp4"
+    upload_path = UPLOAD_DIR / f"{video_id_str}.mp4"
     shutil.copy(test_video_path, upload_path)
-    
-    segments = [
-        {"id": 0, "start": 0.0, "end": 2.5, "text": "Test Subtitle"},
-    ]
-    save_segments(video_id, segments, source="test")
-    
-    return video_id
+
+    segment_row = SegmentRow(
+        video_id=video_uuid,
+        id=0,
+        start=0.0,
+        end=2.5,
+        text="Test Subtitle",
+    )
+    test_db.add(segment_row)
+    test_db.commit()
+
+    return video_id_str, owner_key
 
 
 @pytest.fixture
-def client(temp_storage):
+def client(temp_storage, test_db):
+    """
+    FastAPI TestClient bound to in-memory test database and temp storage.
+    """
     return TestClient(app)
 
 
@@ -400,20 +413,27 @@ class TestGoldenSnapshots:
     ):
         """Compare burned video frame to golden snapshot"""
         # Burn video
+        video_id, owner_key = video_id_with_upload
         payload = {
-            "video_id": video_id_with_upload,
+            "video_id": video_id,
             "segments": [
                 {"id": 0, "start": 0.0, "end": 2.5, "text": "Test Subtitle"},
             ],
             "style": style_config,
         }
         
-        response = client.post("/api/burn", json=payload)
+        # NOTE: /api/burn ignores 'segments' field and loads segments from DB.
+        # We still include it for backward compatibility, but DB is source of truth.
+        response = client.post(
+            "/api/burn",
+            json=payload,
+            headers={"X-Owner-Key": owner_key},
+        )
         assert response.status_code == 200
         
         # Save burned video
         from src.main import OUTPUT_DIR
-        burned_path = OUTPUT_DIR / f"{video_id_with_upload}_burned.mp4"
+        burned_path = OUTPUT_DIR / f"{video_id}_burned.mp4"
         burned_path.write_bytes(response.content)
         
         # Extract frame at 1.0s

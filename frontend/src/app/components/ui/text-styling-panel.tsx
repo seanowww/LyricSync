@@ -15,7 +15,7 @@ const FONT_OPTIONS = ["Inter", "Arial", "Helvetica", "Times New Roman", "Georgia
 
 export function TextStylingPanel({ value, onChange, onPresetChange }: TextStylingPanelProps) {
   return (
-    <div className="w-80 rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-[var(--shadow)] p-5 space-y-5 text-[var(--text)]">
+    <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-[var(--shadow)] p-5 space-y-5 text-[var(--text)]">
       {/* Title */}
       <div className="flex items-center justify-between">
         <h3 className="text-[0.8rem] font-medium tracking-[0.16em] uppercase text-[var(--muted)]">

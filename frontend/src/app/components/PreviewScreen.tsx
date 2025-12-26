@@ -589,7 +589,7 @@ export function PreviewScreen() {
 
       {/* Video and Segments */}
       <div className="flex-1 overflow-auto px-8 py-20">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <div className="flex gap-8 items-center">
             {/* Left: Video Container */}
             <div className="flex-1">
@@ -617,7 +617,7 @@ export function PreviewScreen() {
             </div>
 
             {/* Right: Text Styling Panel - Vertically centered */}
-            <div className="flex-shrink-0 self-center pr-12">
+            <div className="flex-shrink-0 self-center pr-10">
               <TextStylingPanel
                 value={style}
                 onChange={(patch) =>
