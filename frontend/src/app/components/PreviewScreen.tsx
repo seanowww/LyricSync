@@ -531,6 +531,21 @@ export function PreviewScreen() {
     setSegments((prev) => {
       const newSegs = [...prev];
       newSegs[index] = { ...newSegs[index], [field]: value };
+      
+      // Auto-sort segments by start time when timing fields are updated
+      if (field === "start" || field === "end") {
+        newSegs.sort((a, b) => Number(a.start) - Number(b.start));
+      }
+      
+      return newSegs;
+    });
+  };
+
+  // Delete segment
+  const deleteSegment = (index: number) => {
+    setSegments((prev) => {
+      const newSegs = [...prev];
+      newSegs.splice(index, 1);
       return newSegs;
     });
   };
@@ -686,7 +701,7 @@ export function PreviewScreen() {
                     return (
                       <div
                         key={idx}
-                        className={`px-3 py-2 rounded-lg border transition-all cursor-pointer ${
+                        className={`group px-3 py-2 rounded-lg border transition-all cursor-pointer ${
                           isActive
                             ? "bg-[var(--panel2)] border-[var(--accent)]/60 shadow-[0_0_0_1px_rgba(109,90,230,0.2)]"
                             : "bg-transparent border-white/10 hover:border-white/20 hover:bg-[rgba(255,255,255,0.02)]"
@@ -722,8 +737,34 @@ export function PreviewScreen() {
                             <input
                               type="number"
                               step="0.01"
-                              value={formatNum(Number(seg.start))}
-                              onChange={(e) => updateSegment(idx, "start", Number(e.target.value))}
+                              value={seg.start === 0 ? "" : (seg.start ?? "")}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                // If value is empty, set to 0 (will show as placeholder)
+                                if (val === "") {
+                                  updateSegment(idx, "start", 0);
+                                  return;
+                                }
+                                // Only update if value is valid number
+                                const numVal = Number(val);
+                                if (!isNaN(numVal) && numVal >= 0) {
+                                  updateSegment(idx, "start", numVal);
+                                }
+                              }}
+                              onFocus={(e) => {
+                                // When focused and value is 0 (showing as empty), select all so typing replaces it
+                                e.target.select();
+                              }}
+                              onBlur={(e) => {
+                                // Format the value when user finishes editing
+                                const numVal = Number(e.target.value);
+                                if (!isNaN(numVal) && numVal >= 0) {
+                                  updateSegment(idx, "start", formatNum(numVal));
+                                } else {
+                                  // If invalid or empty, reset to 0
+                                  updateSegment(idx, "start", 0);
+                                }
+                              }}
                               onClick={(e) => e.stopPropagation()}
                               className="w-12 px-1.5 py-0.5 text-[0.65rem] tabular-nums text-[var(--muted)]/70 border border-white/10 rounded bg-[var(--panel2)] text-center focus:outline-none focus:ring-1 focus:ring-[#4f2d7f2e] transition-all"
                               placeholder="0"
@@ -732,13 +773,64 @@ export function PreviewScreen() {
                             <input
                               type="number"
                               step="0.01"
-                              value={formatNum(Number(seg.end))}
-                              onChange={(e) => updateSegment(idx, "end", Number(e.target.value))}
+                              value={seg.end === 0 ? "" : (seg.end ?? "")}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                // If value is empty, set to 0 (will show as placeholder)
+                                if (val === "") {
+                                  updateSegment(idx, "end", 0);
+                                  return;
+                                }
+                                // Only update if value is valid number
+                                const numVal = Number(val);
+                                if (!isNaN(numVal) && numVal >= 0) {
+                                  updateSegment(idx, "end", numVal);
+                                }
+                              }}
+                              onFocus={(e) => {
+                                // When focused and value is 0 (showing as empty), select all so typing replaces it
+                                e.target.select();
+                              }}
+                              onBlur={(e) => {
+                                // Format the value when user finishes editing
+                                const numVal = Number(e.target.value);
+                                if (!isNaN(numVal) && numVal >= 0) {
+                                  updateSegment(idx, "end", formatNum(numVal));
+                                } else {
+                                  // If invalid or empty, reset to 0
+                                  updateSegment(idx, "end", 0);
+                                }
+                              }}
                               onClick={(e) => e.stopPropagation()}
                               className="w-12 px-1.5 py-0.5 text-[0.65rem] tabular-nums text-[var(--muted)]/70 border border-white/10 rounded bg-[var(--panel2)] text-center focus:outline-none focus:ring-1 focus:ring-[#4f2d7f2e] transition-all"
                               placeholder="0"
                             />
                           </div>
+                          {/* Delete button - appears on hover */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteSegment(idx);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-1 p-1 hover:bg-[rgba(239,68,68,0.1)] rounded transition-colors"
+                            title="Delete segment"
+                          >
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="text-[#EF4444]"
+                            >
+                              <path d="M3 6h18" />
+                              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                            </svg>
+                          </button>
                         </div>
                       </div>
                     );
