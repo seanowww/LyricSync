@@ -675,7 +675,7 @@ export function PreviewScreen() {
               enabling overflow-auto to create a scrollbar instead of expanding the parent.
             */}
             <div className = "py-20">
-            <aside className="min-w-0 flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-[var(--shadow)]" style={{ height: "calc(100vh - 120px)", maxHeight: "calc(100vh - 80px)" }}>
+            <aside className="min-w-0 flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-[var(--shadow)]" style={{ height: "calc(100vh - 120px)", maxHeight: "calc(100vh - 120px)" }}>
               {/* Header */}
               <div className="px-6 py-6 border-b border-white/10 flex items-center justify-between flex-shrink-0">
                 <h2 className="text-[0.82rem] font-medium uppercase tracking-[0.16em] text-[var(--muted)]">
