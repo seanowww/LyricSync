@@ -9,7 +9,7 @@ type TextStylingDockProps = {
 
 const FONT_OPTIONS = ["Inter", "Arial", "Helvetica", "Times New Roman", "Georgia"];
 
-type TabType = "text" | "color" | "stroke" | "preset";
+type TabType = "text" | "color" | "stroke" | "rotation" | "preset";
 
 export function TextStylingDock({ value, onChange, onPresetChange }: TextStylingDockProps) {
   const [activeTab, setActiveTab] = React.useState<TabType>("text");
@@ -56,11 +56,23 @@ export function TextStylingDock({ value, onChange, onPresetChange }: TextStyling
         </button>
         <button
           type="button"
+          onClick={() => setActiveTab("rotation")}
+          className={`flex-1 px-2.5 py-1.5 rounded-md text-[0.7rem] font-medium transition-all border ${
+            activeTab === "rotation"
+              ? "bg-[var(--accentSoft)] text-[var(--accent)] border-[var(--accent)]/40 shadow-sm"
+              : "border-transparent text-[var(--muted)]/60 hover:text-[var(--muted)] hover:bg-[rgba(255,255,255,0.02)]"
+          }`}
+          title="Rotation"
+        >
+          ↻
+        </button>
+        <button
+          type="button"
           onClick={() => setActiveTab("preset")}
-          className={`flex-1 px-2.5 py-1.5 rounded-md text-[0.7rem] font-medium transition-all ${
+          className={`flex-1 px-2.5 py-1.5 rounded-md text-[0.7rem] font-medium transition-all border ${
             activeTab === "preset"
-              ? "bg-[var(--accentSoft)] text-[var(--accent)] border border-[var(--accent)]/40 shadow-sm"
-              : "text-[var(--muted)]/60 hover:text-[var(--muted)] hover:bg-[rgba(255,255,255,0.02)] border border-transparent"
+              ? "bg-[var(--accentSoft)] text-[var(--accent)] border-[var(--accent)]/40 shadow-sm"
+              : "border-transparent text-[var(--muted)]/60 hover:text-[var(--muted)] hover:bg-[rgba(255,255,255,0.02)]"
           }`}
           title="Preset"
         >
@@ -149,25 +161,45 @@ export function TextStylingDock({ value, onChange, onPresetChange }: TextStyling
 
           {/* COLOR Tab */}
           {activeTab === "color" && (
-            <div className="space-y-1.5">
-              <label className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
-                Text Color
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={value.color}
-                  onChange={(e) => onChange({ color: e.target.value })}
-                  className="w-9 h-9 rounded border border-white/10 cursor-pointer bg-[var(--panel2)]"
-                />
-                <input
-                  type="text"
-                  value={value.color}
-                  onChange={(e) => onChange({ color: e.target.value })}
-                  className="flex-1 px-2 py-1.5 bg-[var(--panel2)] border border-[color:rgba(255,255,255,0.03)] rounded-md text-[0.75rem] text-[var(--text)]/90 focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accentSoft)] transition-colors"
-                />
+            <>
+              <div className="space-y-1.5">
+                <label className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
+                  Text Color
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={value.color}
+                    onChange={(e) => onChange({ color: e.target.value })}
+                    className="w-9 h-9 rounded border border-white/10 cursor-pointer bg-[var(--panel2)]"
+                  />
+                  <input
+                    type="text"
+                    value={value.color}
+                    onChange={(e) => onChange({ color: e.target.value })}
+                    className="flex-1 px-2 py-1.5 bg-[var(--panel2)] border border-[color:rgba(255,255,255,0.03)] rounded-md text-[0.75rem] text-[var(--text)]/90 focus:outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accentSoft)] transition-colors"
+                  />
+                </div>
               </div>
-            </div>
+              <div className="space-y-1.5">
+                <label className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
+                  Opacity
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={value.opacity ?? 100}
+                    onChange={(e) => onChange({ opacity: Number(e.target.value) })}
+                    className="flex-1 accent-[var(--accent)]"
+                  />
+                  <span className="text-[0.7rem] text-[var(--muted)] w-10 text-right font-medium tabular-nums">
+                    {value.opacity ?? 100}%
+                  </span>
+                </div>
+              </div>
+            </>
           )}
 
           {/* STROKE Tab */}
@@ -212,6 +244,35 @@ export function TextStylingDock({ value, onChange, onPresetChange }: TextStyling
                 </div>
               </div>
             </>
+          )}
+
+          {/* ROTATION Tab */}
+          {activeTab === "rotation" && (
+            <div className="space-y-1.5">
+              <label className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
+                Rotation Angle
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min={0}
+                  max={360}
+                  value={value.rotation ?? 0}
+                  onChange={(e) => onChange({ rotation: Number(e.target.value) })}
+                  className="flex-1 accent-[var(--accent)]"
+                />
+                <span className="text-[0.7rem] text-[var(--muted)] w-12 text-right font-medium tabular-nums">
+                  {value.rotation ?? 0}°
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => onChange({ rotation: 0 })}
+                className="w-full px-2 py-1.5 rounded-md border border-[color:rgba(255,255,255,0.05)] bg-[var(--panel2)] text-[0.7rem] text-[var(--muted)] hover:bg-[rgba(255,255,255,0.02)] transition-colors"
+              >
+                Reset Rotation
+              </button>
+            </div>
           )}
 
           {/* PRESET Tab */}

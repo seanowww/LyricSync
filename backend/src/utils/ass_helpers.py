@@ -2,6 +2,7 @@
 Pure helper functions for ASS subtitle generation.
 Extracted from main.py to allow unit testing without importing FastAPI app.
 """
+from typing import Optional
 
 
 def format_ass_timestamp(seconds: float) -> str:
@@ -26,16 +27,19 @@ def escape_ass_text(text: str) -> str:
     return text
 
 
-def css_hex_to_ass(hex_color: str) -> str:
+def css_hex_to_ass(hex_color: str, opacity: Optional[int] = None) -> str:
     """
-    Convert CSS hex color to ASS format: #RRGGBB -> &H00BBGGRR
+    Convert CSS hex color to ASS format: #RRGGBB -> &HAABBGGRR
     
     ASS uses BGR (Blue-Green-Red) format, not RGB.
-    Format: &H00BBGGRR where:
-    - 00 = alpha (opaque)
+    Format: &HAABBGGRR where:
+    - AA = alpha (00 = opaque, FF = transparent)
     - BB = Blue component
     - GG = Green component  
     - RR = Red component
+    
+    Opacity: 0-100 (0 = transparent, 100 = opaque)
+    ASS alpha: 0-255 (0 = opaque, 255 = transparent) - inverted!
     
     Example: #36ce5c (RGB: 54, 206, 92) -> &H005CCE36 (BGR: 92, 206, 54)
     """
@@ -43,8 +47,16 @@ def css_hex_to_ass(hex_color: str) -> str:
     if len(c) != 6:
         c = "FFFFFF"
     rr, gg, bb = c[0:2], c[2:4], c[4:6]
-    # ASS format: &H00BBGGRR (BGR order, not RGB)
-    return f"&H00{bb}{gg}{rr}"
+    
+    # Convert opacity (0-100) to ASS alpha (0-255, inverted)
+    if opacity is not None:
+        # opacity 100 = alpha 00 (opaque), opacity 0 = alpha FF (transparent)
+        alpha_hex = format(int((100 - opacity) * 255 / 100), "02X")
+    else:
+        alpha_hex = "00"  # Default: opaque
+    
+    # ASS format: &HAABBGGRR (BGR order, not RGB)
+    return f"&H{alpha_hex}{bb}{gg}{rr}"
 
 
 def align_to_ass(align: str) -> int:

@@ -85,7 +85,8 @@ def segments_to_ass(
         font = f"{base_font} Italic"
     
     size = style.fontSizePx if style and style.fontSizePx else 28
-    primary = css_hex_to_ass(style.color) if style and style.color else "&H00FFFFFF"
+    opacity = style.opacity if style and style.opacity is not None else 100
+    primary = css_hex_to_ass(style.color, opacity) if style and style.color else css_hex_to_ass("#FFFFFF", opacity)
 
     # Outline color
     outline_color = "&H00000000"  # black
@@ -94,6 +95,9 @@ def segments_to_ass(
 
     outline = style.strokePx if style and style.strokePx is not None else 3
     shadow = style.shadowPx if style and style.shadowPx is not None else 0
+
+    # Rotation angle (ASS uses degrees, 0 = no rotation)
+    rotation = style.rotation if style and style.rotation is not None else 0
 
     alignment = 2  # bottom-center
     margin_v = 0
@@ -113,8 +117,12 @@ def segments_to_ass(
     x = max(0, min(play_res_x, x))
     y = max(0, min(play_res_y, y))
 
-    # ASS override tag: \an2 = bottom-center, \pos(x,y) = absolute position
-    pos_tag = f"{{\\an2\\pos({x},{y})}}"
+    # ASS override tag: \an2 = bottom-center, \pos(x,y) = absolute position, \frz = rotation in degrees
+    # \frz rotates around the position point
+    if rotation != 0:
+        pos_tag = f"{{\\an2\\pos({x},{y})\\frz{rotation}}}"
+    else:
+        pos_tag = f"{{\\an2\\pos({x},{y})}}"
 
     # ASS header
     header = f"""[Script Info]
@@ -126,7 +134,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{font},{size},{primary},&H000000FF,{outline_color},&H64000000,0,0,0,0,100,100,0,0,1,{outline},{shadow},{alignment},20,20,{margin_v},1
+Style: Default,{font},{size},{primary},&H000000FF,{outline_color},&H64000000,0,0,0,0,100,100,0,{rotation},1,{outline},{shadow},{alignment},20,20,{margin_v},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
