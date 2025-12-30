@@ -91,7 +91,7 @@ export function TextStylingDock({ value, onChange, onPresetChange }: TextStyling
           {/* TEXT Tab */}
           {activeTab === "text" && (
             <>
-              <div className="space-y-1.5">
+              <div className="space-y-5.0">
                 <label className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
                   Font Family
                 </label>
@@ -108,7 +108,7 @@ export function TextStylingDock({ value, onChange, onPresetChange }: TextStyling
                 </select>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-2.5">
                 <label className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
                   Font Size
                 </label>
@@ -127,7 +127,7 @@ export function TextStylingDock({ value, onChange, onPresetChange }: TextStyling
                 </div>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-2.5">
                 <label className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
                   Style
                 </label>
@@ -162,7 +162,7 @@ export function TextStylingDock({ value, onChange, onPresetChange }: TextStyling
           {/* COLOR Tab */}
           {activeTab === "color" && (
             <>
-              <div className="space-y-1.5">
+              <div className="space-y-2.5">
                 <label className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
                   Text Color
                 </label>
@@ -181,7 +181,7 @@ export function TextStylingDock({ value, onChange, onPresetChange }: TextStyling
                   />
                 </div>
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2.5">
                 <label className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
                   Opacity
                 </label>
@@ -205,7 +205,7 @@ export function TextStylingDock({ value, onChange, onPresetChange }: TextStyling
           {/* STROKE Tab */}
           {activeTab === "stroke" && (
             <>
-              <div className="space-y-1.5">
+              <div className="space-y-2.5">
                 <label className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
                   Outline Width
                 </label>
@@ -224,7 +224,7 @@ export function TextStylingDock({ value, onChange, onPresetChange }: TextStyling
                 </div>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-2.5">
                 <label className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
                   Outline Color
                 </label>
@@ -248,7 +248,7 @@ export function TextStylingDock({ value, onChange, onPresetChange }: TextStyling
 
           {/* ROTATION Tab */}
           {activeTab === "rotation" && (
-            <div className="space-y-1.5">
+            <div className="space-y-2.5">
               <label className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
                 Rotation Angle
               </label>
@@ -277,7 +277,7 @@ export function TextStylingDock({ value, onChange, onPresetChange }: TextStyling
 
           {/* PRESET Tab */}
           {activeTab === "preset" && (
-            <div className="space-y-1.5">
+            <div className="space-y-2.5">
               <label className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[var(--muted)]">
                 Preset
               </label>
