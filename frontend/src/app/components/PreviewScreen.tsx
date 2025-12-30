@@ -74,6 +74,35 @@ export function PreviewScreen() {
     return "";
   };
 
+  const handleAddLyric = () => {
+    setSegments(prev => {
+      const lastEnd =
+        prev.length === 0
+          ? 0
+          : Math.max(...prev.map(s => Number(s.end)));
+      
+      // Calculate next ID: find max existing ID and add 1, or start at 0 if no segments
+      // WHY: Database has unique constraint on (video_id, id), so we must ensure IDs are unique
+      const existingIds = prev
+        .map(s => s.id)
+        .filter((id): id is number => typeof id === 'number' && id >= 0);
+      const maxId = existingIds.length === 0 ? -1 : Math.max(...existingIds);
+      const nextId = maxId + 1;
+  
+      const sortedSegments = [...prev,
+        {
+          id: nextId,
+          text: "",
+          start: lastEnd,
+          end: lastEnd + 2,
+        },].sort((a,b) => a.start - b.start);
+
+      return sortedSegments;
+    });
+  };
+  
+  
+
   const hexToRgba = (hex: string, alpha: number = 0.85): string => {
     const c = (hex || "#000000").replace("#", "");
     if (c.length !== 6) return `rgba(0,0,0,${alpha})`;
@@ -642,7 +671,7 @@ export function PreviewScreen() {
                 min-h-0 ensures it can shrink and trigger overflow-auto scrolling
                 when content exceeds available height.
               */}
-              <div className="flex-1 min-h-0 overflow-auto px-6 py-3">
+              <div className="flex-1 min-h-0 overflow-auto px-6 pt-4 pb-1">
                 {hasOverlappingSegments && (
                   <div className="mb-3">
                     <Message type="error">
@@ -716,6 +745,27 @@ export function PreviewScreen() {
                   })}
                 </div>
               </div>
+
+              <button
+                onClick={handleAddLyric}
+                className="
+                  flex items-center gap-2
+                  px-3 py-2
+                  text-sm font-medium
+                  text-[var(--muted)]
+                  rounded-lg
+                  border border-transparent
+                  hover:text-[var(--text)]
+                  hover:bg-[rgba(255,255,255,0.03)]
+                  hover:border-[var(--border)]
+                  transition-colors
+                  opacity-30
+                  disabled:cursor-not-allowed
+                "
+              >
+                <span className="text-base leading-none">+</span>
+                <span>Add lyric</span>
+              </button>
 
               {/* Divider - Subtle separator */}
               <div className="border-t border-white/10 flex-shrink-0" />
