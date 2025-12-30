@@ -349,3 +349,82 @@ class TestBurnVideo:
         # Verify output resolution is preserved (check with ffprobe if available)
         # This is a basic test - full verification would require extracting frame
 
+    def test_burn_with_opacity(self, client, video_id_with_upload):
+        """Should work with text opacity"""
+        video_id, owner_key = video_id_with_upload
+        payload = {
+            "video_id": video_id,
+            "segments": [
+                {"id": 0, "start": 0.0, "end": 2.5, "text": "Semi-transparent text"},
+            ],
+            "style": {
+                "fontFamily": "Inter",
+                "color": "#FFFFFF",
+                "opacity": 70,  # 70% opacity
+                "bold": False,
+                "italic": False,
+            },
+        }
+        
+        response = client.post(
+            "/api/burn",
+            json=payload,
+            headers={"X-Owner-Key": owner_key}
+        )
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "video/*"
+        assert len(response.content) > 1000
+
+    def test_burn_with_rotation(self, client, video_id_with_upload):
+        """Should work with text rotation"""
+        video_id, owner_key = video_id_with_upload
+        payload = {
+            "video_id": video_id,
+            "segments": [
+                {"id": 0, "start": 0.0, "end": 2.5, "text": "Rotated text"},
+            ],
+            "style": {
+                "fontFamily": "Inter",
+                "color": "#FFFFFF",
+                "rotation": 45,  # 45 degrees rotation
+                "bold": False,
+                "italic": False,
+            },
+        }
+        
+        response = client.post(
+            "/api/burn",
+            json=payload,
+            headers={"X-Owner-Key": owner_key}
+        )
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "video/*"
+        assert len(response.content) > 1000
+
+    def test_burn_with_opacity_and_rotation(self, client, video_id_with_upload):
+        """Should work with both opacity and rotation"""
+        video_id, owner_key = video_id_with_upload
+        payload = {
+            "video_id": video_id,
+            "segments": [
+                {"id": 0, "start": 0.0, "end": 2.5, "text": "Rotated transparent text"},
+            ],
+            "style": {
+                "fontFamily": "Inter",
+                "color": "#FFFFFF",
+                "opacity": 80,
+                "rotation": 90,  # 90 degrees rotation
+                "bold": False,
+                "italic": False,
+            },
+        }
+        
+        response = client.post(
+            "/api/burn",
+            json=payload,
+            headers={"X-Owner-Key": owner_key}
+        )
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "video/*"
+        assert len(response.content) > 1000
+

@@ -12,6 +12,7 @@ export interface Style {
   fontFamily?: string;
   fontSizePx?: number;
   color?: string;
+  opacity?: number; // 0-100 (0 = transparent, 100 = opaque)
   bold?: boolean;
   italic?: boolean;
   strokePx?: number;
@@ -20,6 +21,7 @@ export interface Style {
   align?: string;
   posX?: number | null;
   posY?: number | null;
+  rotation?: number; // Rotation angle in degrees (0-360)
   maxWidthPct?: number;
   outlineSamples?: number;
 }

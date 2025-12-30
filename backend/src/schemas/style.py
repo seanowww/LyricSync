@@ -27,6 +27,7 @@ class Style(BaseModel):
 
     # Color configuration
     color: str = "#FFFFFF"  # CSS hex
+    opacity: Optional[int] = None  # 0-100 (0 = transparent, 100 = opaque)
     strokePx: int = 3  # Outline thickness
     strokeColor: str = "rgba(0,0,0,0.85)"  # CSS color
     shadowPx: int = 0
@@ -34,6 +35,7 @@ class Style(BaseModel):
     # Positioning (in video pixels)
     posX: Optional[float] = None
     posY: Optional[float] = None
+    rotation: Optional[float] = None  # Rotation angle in degrees (0-360)
 
     # Layout
     align: str = "bottom-center"

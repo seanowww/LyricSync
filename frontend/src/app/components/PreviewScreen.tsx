@@ -176,14 +176,20 @@ export function PreviewScreen() {
     // This ensures fontFamily changes from TextStylingPanel are immediately visible
     const fontFamily = currentStyle.fontFamily ?? "Inter";
     overlay.style.setProperty("font-family", `${fontFamily}, system-ui, sans-serif`, "important");
-    overlay.style.color = currentStyle.color ?? "#FFFFFF";
+    const color = currentStyle.color ?? "#FFFFFF";
+    const opacity = (currentStyle.opacity ?? 100) / 100;
+    overlay.style.color = color;
+    overlay.style.opacity = opacity.toString();
     overlay.style.fontSize = `${(currentStyle.fontSizePx ?? 28) * scaleX}px`;
     overlay.style.fontWeight = currentStyle.bold ? "700" : "400";
     overlay.style.fontStyle = currentStyle.italic ? "italic" : "normal";
-
+    
     overlay.style.left = `${posX * scaleX}px`;
     overlay.style.top = `${posY * scaleY}px`;
-    overlay.style.transform = "translate(-50%, -100%)";
+    
+    // Apply rotation - combine with translate transform
+    const rotation = currentStyle.rotation ?? 0;
+    overlay.style.transform = `translate(-50%, -100%) rotate(${rotation}deg)`;
     overlay.style.textAlign = "center";
     // Remove width constraints to match backend behavior (ASS doesn't wrap)
     // Backend renders text as-is without wrapping, so overlay should match
@@ -669,7 +675,7 @@ export function PreviewScreen() {
               enabling overflow-auto to create a scrollbar instead of expanding the parent.
             */}
             <div className = "py-20">
-            <aside className="min-w-0 flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-[var(--shadow)]">
+            <aside className="min-w-0 flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-[var(--shadow)]" style={{ height: "calc(100vh - 120px)", maxHeight: "calc(100vh - 80px)" }}>
               {/* Header */}
               <div className="px-6 py-6 border-b border-white/10 flex items-center justify-between flex-shrink-0">
                 <h2 className="text-[0.82rem] font-medium uppercase tracking-[0.16em] text-[var(--muted)]">
@@ -683,8 +689,8 @@ export function PreviewScreen() {
               {/* Scrollable Lyrics List */}
               {/* 
                 WHY flex-1 + min-h-0: flex-1 makes this take all remaining space.
-                min-h-0 ensures it can shrink and trigger overflow-auto scrolling
-                when content exceeds available height.
+                min-h-0 ensures it can shrink below content size to enable scrolling.
+                overflow-auto enables scrolling when content exceeds available height.
               */}
               <div className="flex-1 min-h-0 overflow-auto px-6 pt-4 pb-1">
                 {hasOverlappingSegments && (
@@ -812,12 +818,12 @@ export function PreviewScreen() {
                               e.stopPropagation();
                               deleteSegment(idx);
                             }}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-1 p-1 hover:bg-[rgba(239,68,68,0.1)] rounded transition-colors"
+                            className="opacity-0 group-hover:opacity-80 transition-opacity flex-shrink-0 p-1 hover:bg-[rgba(239,68,68,0.1)] rounded transition-colors"
                             title="Delete segment"
                           >
                             <svg
-                              width="14"
-                              height="14"
+                              width="12"
+                              height="12"
                               viewBox="0 0 24 24"
                               fill="none"
                               stroke="currentColor"
@@ -853,6 +859,8 @@ export function PreviewScreen() {
                   transition-colors
                   opacity-30
                   disabled:cursor-not-allowed
+                  flex-shrink-0
+                  mx-6 mb-2
                 "
               >
                 <span className="text-base leading-none">+</span>
@@ -864,7 +872,7 @@ export function PreviewScreen() {
 
               {/* Bottom Dock: Fixed height with internal scrolling */}
               {/* 
-                WHY fixed height: Dock has a fixed height (200px) so lyrics list
+                WHY fixed height: Dock has a fixed height (260px) so lyrics list
                 gets all remaining vertical space. Dock's internal content can scroll
                 if controls exceed the fixed height.
               */}
@@ -873,7 +881,7 @@ export function PreviewScreen() {
                   Edit
                 </h2>
               </div>
-              <div className="h-[260px] min-h-[200px] flex-shrink-0 px-6 py-3">
+              <div className="h-[260px] flex-shrink-0 px-6 py-3 overflow-hidden">
                 <TextStylingDock
                   value={style}
                   onChange={(patch) =>
