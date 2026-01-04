@@ -28,30 +28,34 @@ def temp_storage():
     for subdir in ["uploads", "tmp", "outputs", "segments"]:
         (storage_dir / subdir).mkdir(parents=True)
     
-    # Monkey-patch storage directories
-    from src import main as main_module
+    # Monkey-patch storage directories in storage module
+    from src.services import storage as storage_module
+    from src.services import segments_store as store_module
+    from src.services import burn_service
     
-    original_upload = main_module.UPLOAD_DIR
-    original_tmp = main_module.TMP_DIR
-    original_output = main_module.OUTPUT_DIR
-    original_segments = main_module.SEGMENTS_DIR
-    original_fonts = main_module.FONTS_DIR
+    original_upload = storage_module.UPLOAD_DIR
+    original_tmp = storage_module.TMP_DIR
+    original_output = storage_module.OUTPUT_DIR
+    original_segments = store_module.SEGMENTS_DIR
+    original_burn_tmp = burn_service.TMP_DIR
+    original_burn_output = burn_service.OUTPUT_DIR
     
-    main_module.UPLOAD_DIR = storage_dir / "uploads"
-    main_module.TMP_DIR = storage_dir / "tmp"
-    main_module.OUTPUT_DIR = storage_dir / "outputs"
-    main_module.SEGMENTS_DIR = storage_dir / "segments"
-    # Use actual fonts dir for tests
-    main_module.FONTS_DIR = Path(__file__).parent.parent.parent / "src" / "assets" / "fonts"
+    storage_module.UPLOAD_DIR = storage_dir / "uploads"
+    storage_module.TMP_DIR = storage_dir / "tmp"
+    storage_module.OUTPUT_DIR = storage_dir / "outputs"
+    store_module.SEGMENTS_DIR = storage_dir / "segments"
+    burn_service.TMP_DIR = storage_dir / "tmp"
+    burn_service.OUTPUT_DIR = storage_dir / "outputs"
     
     yield temp_dir
     
     # Restore
-    main_module.UPLOAD_DIR = original_upload
-    main_module.TMP_DIR = original_tmp
-    main_module.OUTPUT_DIR = original_output
-    main_module.SEGMENTS_DIR = original_segments
-    main_module.FONTS_DIR = original_fonts
+    storage_module.UPLOAD_DIR = original_upload
+    storage_module.TMP_DIR = original_tmp
+    storage_module.OUTPUT_DIR = original_output
+    store_module.SEGMENTS_DIR = original_segments
+    burn_service.TMP_DIR = original_burn_tmp
+    burn_service.OUTPUT_DIR = original_burn_output
     shutil.rmtree(temp_dir)
 
 
@@ -82,18 +86,36 @@ def video_id_with_upload(temp_storage, test_video_path, test_db, test_video_and_
     """
     Create video + uploaded video file + DB segments for golden tests.
     
+    IMPORTANT: Returns UUID object internally. Convert to str only at API boundary.
+    
     Returns:
-        (video_id_str, owner_key)
+        (video_id, owner_key) where video_id is UUID object
     """
-    video_id_str, owner_key = test_video_and_owner_key
-    video_uuid = uuid.UUID(video_id_str)
+    video_id, owner_key = test_video_and_owner_key  # UUID object
 
-    from src.main import UPLOAD_DIR
-    upload_path = UPLOAD_DIR / f"{video_id_str}.mp4"
+    # Verify video exists in database (from test_video_and_owner_key)
+    from src.models.video import Video
+    video = test_db.query(Video).filter(Video.id == video_id).first()
+    assert video is not None, f"Video {video_id} not found in database"
+    assert video.owner_key == owner_key, f"Video owner_key mismatch: expected {owner_key}, got {video.owner_key}"
+
+    # Import after temp_storage has patched it
+    from src.services import storage as storage_module
+    from src.services.storage import find_uploaded_video
+    # Convert UUID → str for file path (storage uses string paths)
+    upload_path = storage_module.UPLOAD_DIR / f"{video_id}.mp4"
     shutil.copy(test_video_path, upload_path)
+    
+    # Verify file was created
+    assert upload_path.exists(), f"Video file not created at {upload_path}"
+    
+    # Verify find_uploaded_video can find it (confirms patching worked)
+    # find_uploaded_video expects string, so convert UUID → str at boundary
+    found_path = find_uploaded_video(str(video_id))
+    assert found_path == upload_path, f"find_uploaded_video found {found_path} but expected {upload_path}"
 
     segment_row = SegmentRow(
-        video_id=video_uuid,
+        video_id=video_id,  # Use UUID internally
         id=0,
         start=0.0,
         end=2.5,
@@ -102,7 +124,11 @@ def video_id_with_upload(temp_storage, test_video_path, test_db, test_video_and_
     test_db.add(segment_row)
     test_db.commit()
 
-    return video_id_str, owner_key
+    # Verify segment was created
+    segment_count = test_db.query(SegmentRow).filter(SegmentRow.video_id == video_id).count()
+    assert segment_count == 1, f"Expected 1 segment, found {segment_count}"
+
+    return video_id, owner_key  # Return UUID object
 
 
 @pytest.fixture
@@ -491,7 +517,7 @@ class TestGoldenSnapshots:
         # Burn video
         video_id, owner_key = video_id_with_upload
         payload = {
-            "video_id": video_id,
+            "video_id": str(video_id),  # Convert UUID → str at API boundary
             "segments": [
                 {"id": 0, "start": 0.0, "end": 2.5, "text": "Test Subtitle"},
             ],
@@ -508,8 +534,9 @@ class TestGoldenSnapshots:
         assert response.status_code == 200
         
         # Save burned video
-        from src.main import OUTPUT_DIR
-        burned_path = OUTPUT_DIR / f"{video_id}_burned.mp4"
+        from src.services import burn_service
+        # Convert UUID → str for file path (storage uses string paths)
+        burned_path = burn_service.OUTPUT_DIR / f"{video_id}_burned.mp4"
         burned_path.write_bytes(response.content)
         
         # Extract frame at 1.0s

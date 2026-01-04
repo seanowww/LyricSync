@@ -97,7 +97,10 @@ def segments_to_ass(
     shadow = style.shadowPx if style and style.shadowPx is not None else 0
 
     # Rotation angle (ASS uses degrees, 0 = no rotation)
-    rotation = style.rotation if style and style.rotation is not None else 0
+    # CSS rotate() uses positive values for clockwise rotation
+    # ASS \frz uses positive values for counter-clockwise rotation
+    # So we need to negate the value to match the frontend behavior
+    rotation = -style.rotation if style and style.rotation is not None else 0
 
     alignment = 2  # bottom-center
     margin_v = 0

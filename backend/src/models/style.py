@@ -2,12 +2,12 @@
 """
 Style ORM model.
 
-WHY: Stores rendering configuration (font, color, position) as JSONB.
+WHY: Stores rendering configuration (font, color, position) as JSON.
 One style per video (one-to-one relationship).
 """
 import uuid
-from sqlalchemy import ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import ForeignKey, JSON
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.db.session import Base
 
@@ -16,8 +16,9 @@ class StyleRow(Base):
     """
     Style configuration model.
     
-    WHY: Uses JSONB to store flexible style data (fontFamily, fontSizePx, etc.)
+    WHY: Uses JSON to store flexible style data (fontFamily, fontSizePx, etc.)
     This allows schema evolution without migrations for style fields.
+    Uses JSON (not JSONB) for SQLite compatibility in tests.
     """
     __tablename__ = "styles"
 
@@ -29,7 +30,8 @@ class StyleRow(Base):
     )
     
     # Style configuration as JSON (matches Pydantic Style model)
-    style_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    # Uses JSON instead of JSONB for SQLite compatibility
+    style_json: Mapped[dict] = mapped_column(JSON, nullable=False)
 
     # Relationship back to video
     video = relationship("Video", back_populates="style")

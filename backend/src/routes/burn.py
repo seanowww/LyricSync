@@ -37,15 +37,20 @@ async def burn_video(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid video_id format")
 
-    # Verify ownership
+    # Validate segments are not empty
+    if len(payload.segments) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="No segments provided"
+        )
+
+    # Verify ownership and video exists
     video = get_video_or_404(db, video_uuid, owner_key)
 
     # Find uploaded video file
     input_path = find_uploaded_video(payload.video_id)
 
-    # Load segments from database (source of truth)
-    # WHY: We use segments from DB, not from request payload
-    # This ensures we're burning the latest saved segments
+    # Query segments from database
     segment_rows = (
         db.query(SegmentRow)
         .filter(SegmentRow.video_id == video_uuid)
@@ -53,14 +58,12 @@ async def burn_video(
         .all()
     )
 
-    if not segment_rows:
-        raise HTTPException(
-            status_code=404,
-            detail="No segments found for this video"
-        )
-
-    # Convert to API schemas
-    segments = segments_rows_to_schemas(segment_rows)
+    if segment_rows:
+        # Use segments from database (source of truth)
+        segments = segments_rows_to_schemas(segment_rows)
+    else:
+        # Fallback: use segments from payload if no DB segments exist
+        segments = payload.segments
 
     # Burn video
     output_path = burn_video_with_subtitles(
