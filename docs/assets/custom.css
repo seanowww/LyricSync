@@ -316,38 +316,60 @@ h2::after {
   background: linear-gradient(to right, var(--border), transparent);
 }
 
-/* Stack badges */
-.stack-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-sm);
-  margin: var(--spacing-lg) 0 var(--spacing-xl) 0;
-  align-items: center;
+/* Stack badges - High specificity to override Jekyll theme defaults */
+.main-content .stack-badges,
+.main-content div.stack-badges,
+.stack-badges,
+div.stack-badges,
+p .stack-badges,
+p div.stack-badges {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: var(--spacing-sm) !important;
+  margin: var(--spacing-lg) 0 var(--spacing-xl) 0 !important;
+  align-items: center !important;
+  list-style: none !important;
+  padding: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
-.badge {
-  display: inline-block;
-  padding: var(--spacing-xs) var(--spacing-md);
-  background-color: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  line-height: var(--line-height-normal);
-  transition: background-color var(--transition-base), border-color var(--transition-base), transform var(--transition-fast);
+.main-content .stack-badges .badge,
+.stack-badges .badge,
+.stack-badges > .badge,
+div.stack-badges span.badge,
+span.badge {
+  display: inline-block !important;
+  padding: var(--spacing-xs) var(--spacing-md) !important;
+  background-color: var(--panel) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+  color: var(--text) !important;
+  font-size: var(--font-size-sm) !important;
+  font-weight: 500 !important;
+  line-height: var(--line-height-normal) !important;
+  transition: background-color var(--transition-base), border-color var(--transition-base), transform var(--transition-fast) !important;
+  white-space: nowrap !important;
+  text-decoration: none !important;
 }
 
-.badge:hover {
-  background-color: var(--panel2);
-  border-color: var(--accent);
-  transform: translateY(-1px);
+.main-content .stack-badges .badge:hover,
+.stack-badges .badge:hover,
+.stack-badges > .badge:hover,
+span.badge:hover {
+  background-color: var(--panel2) !important;
+  border-color: var(--accent) !important;
+  transform: translateY(-1px) !important;
+  text-decoration: none !important;
 }
 
-.badge:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  background-color: var(--accentSoft);
+.main-content .stack-badges .badge:focus-visible,
+.stack-badges .badge:focus-visible,
+.stack-badges > .badge:focus-visible,
+span.badge:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px !important;
+  background-color: var(--accentSoft) !important;
 }
 
 hr {
@@ -545,13 +567,19 @@ nav,
     font-size: var(--font-size-2xl);
   }
   
-  .stack-badges {
-    gap: var(--spacing-xs);
+  .main-content .stack-badges,
+  .stack-badges,
+  div.stack-badges {
+    gap: var(--spacing-xs) !important;
   }
   
-  .badge {
-    font-size: var(--font-size-xs);
-    padding: var(--spacing-xs) var(--spacing-sm);
+  .main-content .stack-badges .badge,
+  .stack-badges .badge,
+  .stack-badges > .badge,
+  div.stack-badges span.badge,
+  span.badge {
+    font-size: var(--font-size-xs) !important;
+    padding: var(--spacing-xs) var(--spacing-sm) !important;
   }
   
   .architecture-diagram {
