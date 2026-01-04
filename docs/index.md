@@ -1,3 +1,5 @@
+<link rel="stylesheet" href="./assets/custom.css">
+
 <style>
 /* LyricSync Theme - Dark Studio Aesthetic */
 :root {
@@ -91,8 +93,8 @@ li {
 }
 
 code {
-  background-color: var(--panel2);
-  color: var(--accent);
+  background-color: var(--panel2) !important;
+  color: var(--accent) !important;
   padding: 0.2em 0.5em;
   border-radius: 4px;
   font-size: 0.9em;
@@ -101,17 +103,18 @@ code {
 }
 
 pre {
-  background-color: var(--panel);
-  border: 1px solid var(--border);
+  background-color: var(--panel) !important;
+  border: 1px solid var(--border) !important;
   border-radius: 8px;
   padding: 1.25rem;
   overflow-x: auto;
   margin: 1.5rem 0;
+  color: var(--text) !important;
 }
 
 pre code {
-  background-color: transparent;
-  color: var(--text);
+  background-color: transparent !important;
+  color: var(--text) !important;
   border: none;
   padding: 0;
   font-size: 0.9em;
@@ -202,6 +205,86 @@ h1 + p a {
 h1 + p a:hover {
   border-bottom-color: transparent;
 }
+
+/* Override Jekyll theme defaults */
+.wrapper {
+  background-color: var(--bg) !important;
+  color: var(--text) !important;
+}
+
+.site-header {
+  background-color: var(--panel) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.site-title, .site-title:visited {
+  color: var(--text) !important;
+}
+
+.site-nav .page-link {
+  color: var(--text) !important;
+}
+
+.site-footer {
+  background-color: var(--panel) !important;
+  border-top: 1px solid var(--border) !important;
+  color: var(--muted) !important;
+}
+
+/* Ensure all containers use dark theme */
+.main-content {
+  background-color: var(--bg) !important;
+  color: var(--text) !important;
+}
+
+/* Fix any white backgrounds from Jekyll */
+.page-content {
+  background-color: transparent !important;
+}
+
+/* Table styling */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.5rem 0;
+}
+
+table th, table td {
+  border: 1px solid var(--border);
+  padding: 0.75rem;
+  text-align: left;
+}
+
+table th {
+  background-color: var(--panel);
+  color: var(--text);
+  font-weight: 600;
+}
+
+table td {
+  background-color: var(--panel2);
+  color: var(--text);
+}
+
+/* Ensure syntax highlighting works with dark theme */
+.highlight {
+  background-color: var(--panel) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+.highlight pre {
+  background-color: transparent !important;
+  margin: 0;
+  padding: 0;
+}
+
+.highlight code {
+  background-color: transparent !important;
+  color: var(--text) !important;
+}
 </style>
 
 # LyricSync
@@ -212,7 +295,7 @@ h1 + p a:hover {
 - Edit lyrics and timing with real-time preview
 - Render professional subtitle videos with customizable styling
 
-[View full README](../README.md) | [GitHub Repository](https://github.com/seanowww/LyricSync)
+[GitHub Repository](https://github.com/seanowww/LyricSync)
 
 ---
 
