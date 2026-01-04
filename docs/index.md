@@ -203,48 +203,73 @@ h1 + p a:hover {
   border-bottom-color: transparent;
 }
 
-/* Override Jekyll theme defaults - Remove sidebar, full-width layout */
+/* Override Jekyll theme defaults - Force single column, top-to-bottom layout */
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+}
+
+/* Hide all theme navigation/sidebar/header/footer elements */
+.site-header,
+.site-footer,
+.site-nav,
+.sidebar,
+header,
+footer,
+nav,
+.page-header,
+.page-title-wrapper {
+  display: none !important;
+}
+
+/* Force wrapper to be single column */
 .wrapper {
   background-color: var(--bg) !important;
   color: var(--text) !important;
   max-width: 100% !important;
   padding: 0 !important;
+  margin: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  float: none !important;
 }
 
-.site-header {
-  display: none !important;
-}
-
-.site-footer {
-  display: none !important;
-}
-
-/* Ensure all containers use dark theme */
-.main-content {
+/* Force main content to be full width, single column */
+.main-content,
+.page-content,
+.content,
+article,
+section,
+.page-wrapper {
   background-color: var(--bg) !important;
   color: var(--text) !important;
   max-width: 1200px !important;
   margin: 0 auto !important;
   padding: 2rem !important;
-}
-
-/* Fix any white backgrounds from Jekyll */
-.page-content {
-  background-color: transparent !important;
-  max-width: 100% !important;
-}
-
-/* Hide sidebar if present */
-.sidebar {
-  display: none !important;
-}
-
-/* Full-width content */
-.content {
   width: 100% !important;
-  max-width: 1200px !important;
-  margin: 0 auto !important;
-  padding: 2rem !important;
+  float: none !important;
+  display: block !important;
+  clear: both !important;
+}
+
+/* Remove any grid/flex layouts that create columns */
+.wrapper,
+.main-content,
+.page-content {
+  display: block !important;
+}
+
+/* Override any theme-specific column classes */
+.column,
+.columns,
+.sidebar,
+.main {
+  width: 100% !important;
+  float: none !important;
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 /* Table styling */
@@ -318,9 +343,13 @@ table td {
 
 **Real-time synchronized preview with styling controls.** The preview matches the final burned output pixel-perfectly through PlayRes probing via ffprobe—no calibration constants needed. Edit lyrics, adjust timing, and see changes instantly before rendering.
 
-### Styling & Rendering
+### Styling System
 
-**Full typographic control with deterministic rendering.** Fonts are bundled and referenced via `fontsdir` in FFmpeg, ensuring consistent output across environments. Supports Arial, Georgia, Helvetica, Inter, and Times New Roman with bold/italic variants. FFmpeg-based subtitle burning with ASS format converts segments from JSON to ASS subtitles, then burns them into video with precise positioning, opacity, rotation, and stroke controls. Golden snapshot tests ensure style regression safety.
+**Full typographic control with deterministic rendering.** Fonts are bundled and referenced via `fontsdir` in FFmpeg, ensuring consistent output across environments. Supports Arial, Georgia, Helvetica, Inter, and Times New Roman with bold/italic variants.
+
+### Export & Rendering
+
+**FFmpeg-based subtitle burning with ASS format.** Segments are converted from JSON to ASS subtitles, then burned into video with precise positioning, opacity, rotation, and stroke controls. Golden snapshot tests ensure style regression safety.
 
 ---
 
