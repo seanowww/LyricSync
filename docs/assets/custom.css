@@ -40,7 +40,7 @@
   --line-height-loose: 2;
   
   /* Container */
-  --container-max-width: 65ch;
+  --container-max-width: 1200px;
   --container-padding-mobile: 1rem;
   --container-padding-tablet: 1.5rem;
   --container-padding-desktop: 2rem;
@@ -542,14 +542,14 @@ nav,
     padding: var(--container-padding-desktop) !important;
   }
   
-  /* Wider container for desktop while maintaining readability */
+  /* Wider container for desktop */
   .main-content,
   .page-content,
   .content,
   article,
   section,
   .page-wrapper {
-    max-width: min(var(--container-max-width), 90ch) !important;
+    max-width: var(--container-max-width) !important;
   }
   
   img {
