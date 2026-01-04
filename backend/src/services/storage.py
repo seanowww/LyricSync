@@ -21,16 +21,23 @@ TMP_DIR = STORAGE_DIR / "tmp"
 for d in (UPLOAD_DIR, OUTPUT_DIR, TMP_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
-MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB for MVP
+# File size limit removed for development
+# Set MAX_UPLOAD_BYTES to a value (in bytes) to re-enable size checking
+MAX_UPLOAD_BYTES = None  # No limit in development
 ALLOWED_EXTS = {".mp4", ".mov", ".m4a", ".mp3", ".wav", ".webm"}
 
 
-def copy_with_limit(src: BinaryIO, dst: BinaryIO, max_bytes: int) -> None:
+def copy_file(src: BinaryIO, dst: BinaryIO, max_bytes: int | None = None) -> None:
     """
-    Copy file with size limit check.
+    Copy file with optional size limit check.
     
-    WHY: Prevents uploading files that are too large.
-    Reads in chunks to avoid loading entire file into memory.
+    WHY: Reads in chunks to avoid loading entire file into memory.
+    Size limit is optional and can be disabled by passing None.
+    
+    Args:
+        src: Source file-like object
+        dst: Destination file-like object
+        max_bytes: Optional maximum file size in bytes. If None, no limit is enforced.
     """
     total = 0
     chunk_size = 1024 * 1024  # 1 MB chunks
@@ -39,10 +46,10 @@ def copy_with_limit(src: BinaryIO, dst: BinaryIO, max_bytes: int) -> None:
         if not chunk:
             break
         total += len(chunk)
-        if total > max_bytes:
+        if max_bytes is not None and total > max_bytes:
             raise HTTPException(
                 status_code=413,
-                detail="File too large for MVP limit."
+                detail=f"File too large. Maximum size: {max_bytes / (1024 * 1024):.1f} MB"
             )
         dst.write(chunk)
 
@@ -51,7 +58,7 @@ def save_uploaded_file(
     file: UploadFile,
     video_id: str,
     allowed_exts: set[str] = ALLOWED_EXTS,
-    max_bytes: int = MAX_UPLOAD_BYTES
+    max_bytes: int | None = MAX_UPLOAD_BYTES
 ) -> Path:
     """
     Save uploaded file to storage directory.
@@ -63,7 +70,7 @@ def save_uploaded_file(
         file: FastAPI UploadFile
         video_id: UUID string to use as filename base
         allowed_exts: Set of allowed file extensions
-        max_bytes: Maximum file size in bytes
+        max_bytes: Optional maximum file size in bytes. If None, no limit is enforced.
     
     Returns:
         Path to saved file
@@ -84,7 +91,7 @@ def save_uploaded_file(
 
     try:
         with open(saved_path, "wb") as out_file:
-            copy_with_limit(file.file, out_file, max_bytes)
+            copy_file(file.file, out_file, max_bytes)
     except HTTPException:
         # Re-raise size limit errors
         raise
