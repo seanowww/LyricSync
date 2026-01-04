@@ -438,7 +438,7 @@ pytest  # All tests
 pytest tests/integration/test_burn_api.py -v  # Specific suite
 ```
 
-For detailed setup instructions, see the [main README](../README.md).
+For detailed setup instructions, see the [main README](https://github.com/seanowww/LyricSync/blob/main/README.md).
 
 ---
 
