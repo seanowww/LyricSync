@@ -41,7 +41,7 @@ layout: default
 ## Architecture
 
 <div class="architecture-diagram">
-![System Architecture](assets/architecture.png)
+![System Architecture](./assets/architecture.png)
 </div>
 
 ### Backend Components
