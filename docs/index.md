@@ -1,3 +1,209 @@
+<style>
+/* LyricSync Theme - Dark Studio Aesthetic */
+:root {
+  --bg: #0E0E11;
+  --panel: #16161D;
+  --panel2: #1C1C26;
+  --border: #242430;
+  --text: #EDEDF2;
+  --muted: #A0A0B0;
+  --muted2: #7C7C92;
+  --accent: #6D5AE6;
+  --accentSoft: rgba(109, 90, 230, 0.15);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg) !important;
+  color: var(--text) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  line-height: 1.7;
+  margin: 0;
+  padding: 2rem;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+h1 {
+  color: var(--text) !important;
+  font-weight: 700;
+  font-size: 2.5rem;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  line-height: 1.2;
+}
+
+h2 {
+  color: var(--text) !important;
+  font-weight: 600;
+  font-size: 1.75rem;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 0.75rem;
+  margin-top: 3rem;
+  margin-bottom: 1.5rem;
+}
+
+h3 {
+  color: var(--text) !important;
+  font-weight: 600;
+  font-size: 1.35rem;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+h4, h5, h6 {
+  color: var(--text) !important;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+p {
+  color: var(--text);
+  margin: 1rem 0;
+  line-height: 1.7;
+}
+
+a {
+  color: var(--accent) !important;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+a:hover {
+  text-decoration: underline;
+  opacity: 0.85;
+}
+
+ul, ol {
+  color: var(--text);
+  margin: 1rem 0;
+  padding-left: 2rem;
+}
+
+li {
+  margin: 0.5rem 0;
+  line-height: 1.6;
+}
+
+code {
+  background-color: var(--panel2);
+  color: var(--accent);
+  padding: 0.2em 0.5em;
+  border-radius: 4px;
+  font-size: 0.9em;
+  border: 1px solid var(--border);
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+pre {
+  background-color: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+
+pre code {
+  background-color: transparent;
+  color: var(--text);
+  border: none;
+  padding: 0;
+  font-size: 0.9em;
+}
+
+blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 1.5rem;
+  margin: 1.5rem 0;
+  color: var(--muted);
+  background-color: var(--panel2);
+  padding: 1rem 1.5rem;
+  border-radius: 6px;
+  font-style: italic;
+}
+
+img {
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 2rem auto;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 3rem 0;
+}
+
+.architecture-diagram {
+  background-color: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2rem;
+  margin: 3rem 0;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.architecture-diagram img {
+  border: none;
+  box-shadow: none;
+  max-width: 100%;
+  margin: 0;
+}
+
+.screenshot-caption {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-top: 0.75rem;
+  font-style: italic;
+  text-align: center;
+}
+
+strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  body {
+    padding: 1rem;
+  }
+  
+  h1 {
+    font-size: 2rem;
+  }
+  
+  h2 {
+    font-size: 1.5rem;
+  }
+  
+  .architecture-diagram {
+    padding: 1rem;
+  }
+}
+
+/* Link styling in hero section */
+h1 + p a {
+  font-weight: 500;
+  border-bottom: 1px solid var(--accent);
+}
+
+h1 + p a:hover {
+  border-bottom-color: transparent;
+}
+</style>
+
 # LyricSync
 
 **AI-assisted lyric timing and subtitle rendering for singing videos**
@@ -36,24 +242,11 @@
 
 ## Architecture
 
-```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│   React     │────▶│   FastAPI    │────▶│ PostgreSQL  │
-│  Frontend   │     │   Backend    │     │  Database   │
-└─────────────┘     └──────────────┘     └─────────────┘
-     │                      │                     │
-     │                      ▼                     │
-     │              ┌──────────────┐              │
-     │              │   Whisper    │              │
-     │              │  Transcription│              │
-     │              └──────────────┘              │
-     │                      │                     │
-     │                      ▼                     │
-     │              ┌──────────────┐              │
-     └─────────────▶│   FFmpeg     │◀─────────────┘
-                    │  Rendering   │
-                    └──────────────┘
-```
+<div class="architecture-diagram">
+![System Architecture](./assets/architecture.png)
+</div>
+
+*Diagram source: `docs/assets/architecture.puml`. Regenerate with: `plantuml docs/assets/architecture.puml -o docs/assets/`*
 
 ### Backend Components
 

@@ -1,0 +1,106 @@
+@startuml architecture
+!theme plain
+allowmixing
+
+' ============================================
+' COLOR SCHEME - LyricSync Dark Theme
+' ============================================
+skinparam backgroundColor #0E0E11
+skinparam defaultFontColor #EDEDF2
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam roundcorner 8
+skinparam shadowing false
+
+' Component styling
+skinparam component {
+    BackgroundColor #16161D
+    BorderColor #6D5AE6
+    ArrowColor #6D5AE6
+    FontColor #EDEDF2
+    FontSize 11
+    FontStyle bold
+}
+
+' Package styling
+skinparam package {
+    BackgroundColor #1C1C26
+    BorderColor #242430
+    FontColor #EDEDF2
+    FontSize 13
+    FontStyle bold
+}
+
+' Database styling
+skinparam database {
+    BackgroundColor #16161D
+    BorderColor #6D5AE6
+    FontColor #EDEDF2
+}
+
+' Cloud/External styling
+skinparam cloud {
+    BackgroundColor #1C1C26
+    BorderColor #6D5AE6
+    FontColor #EDEDF2
+}
+
+' Collections/Storage styling
+skinparam collections {
+    BackgroundColor #16161D
+    BorderColor #6D5AE6
+    FontColor #EDEDF2
+}
+
+' Arrow styling
+skinparam arrow {
+    Color #6D5AE6
+    Thickness 2
+    FontColor #EDEDF2
+    FontSize 9
+}
+
+' Layout
+left to right direction
+
+' ============================================
+' ARCHITECTURE COMPONENTS
+' ============================================
+
+package "Presentation" #1C1C26 {
+    component [React + TypeScript\nEditor UI] as FE #16161D
+}
+
+package "Backend (FastAPI)" #1C1C26 {
+    component [REST API] as API #16161D
+    component [Transcription Worker] as TR #16161D
+    component [Render Worker\n(FFmpeg)] as RW #16161D
+}
+
+cloud "External" #1C1C26 {
+    component [OpenAI Whisper API] as WAPI #16161D
+}
+
+database "PostgreSQL" as DB #16161D
+collections "Media Storage\n(S3 / local)" as STORE #16161D
+
+' ============================================
+' DATA FLOW - Essential flows only
+' ============================================
+
+FE <--> API : HTTP/JSON
+
+API --> DB : CRUD
+API --> STORE : Media
+
+API --> TR : Transcribe
+TR --> WAPI : Audio
+WAPI ..> TR : Segments
+TR --> DB : Save
+
+API --> RW : Render
+RW --> DB : Read
+RW --> STORE : MP4
+RW ..> API : Complete
+
+@enduml
