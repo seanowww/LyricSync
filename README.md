@@ -2,6 +2,9 @@
 
 A full-stack web application for automatically transcribing singing videos, synchronizing lyrics with precise timing, and rendering professional lyric videos with customizable subtitles.
 
+**Project page (GitHub Pages):** [View Documentation Site](https://YOUR_USERNAME.github.io/LyricSync/)  
+*Note: This site is a static walkthrough; backend is not deployed.*
+
 ## Overview
 
 LyricSync automates the time-consuming process of creating lyric videos. Upload a singing video, and the application uses AI transcription to generate time-aligned lyrics that can be edited, styled, and burned directly into the video with professional-quality subtitles.
