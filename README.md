@@ -2,7 +2,7 @@
 
 A full-stack web application for automatically transcribing singing videos, synchronizing lyrics with precise timing, and rendering professional lyric videos with customizable subtitles.
 
-**Project page (GitHub Pages):** [View Documentation Site](https://YOUR_USERNAME.github.io/LyricSync/)  
+**Project page (GitHub Pages):** [View Documentation Site](https://seanowww.github.io/LyricSync/)  
 *Note: This site is a static walkthrough; backend is not deployed.*
 
 ## Overview
