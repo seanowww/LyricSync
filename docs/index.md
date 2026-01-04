@@ -12,16 +12,6 @@ layout: default
 
 [GitHub Repository](https://github.com/seanowww/LyricSync)
 
-<div class="stack-badges">
-  <span class="badge">FastAPI</span>
-  <span class="badge">React+TS</span>
-  <span class="badge">Postgres</span>
-  <span class="badge">FFmpeg</span>
-  <span class="badge">Whisper</span>
-  <span class="badge">ASS</span>
-  <span class="badge">Snapshot Tests</span>
-</div>
-
 ---
 
 ## Demo
