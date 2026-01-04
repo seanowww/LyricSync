@@ -38,15 +38,16 @@ def video_with_segments(test_db, test_video_and_owner_key, sample_segments):
     """
     Create a video with pre-saved segments in the database.
     
+    IMPORTANT: Returns UUID object internally. Convert to str only at API boundary.
+    
     Returns:
-        (video_id_str, owner_key)
+        (video_id, owner_key) where video_id is UUID object
     """
-    video_id_str, owner_key = test_video_and_owner_key
-    video_uuid = uuid.UUID(video_id_str)
+    video_id, owner_key = test_video_and_owner_key  # UUID object
 
     for seg in sample_segments:
         row = SegmentRow(
-            video_id=video_uuid,
+            video_id=video_id,  # Use UUID internally
             id=seg["id"],
             start=seg["start"],
             end=seg["end"],
@@ -55,7 +56,7 @@ def video_with_segments(test_db, test_video_and_owner_key, sample_segments):
         test_db.add(row)
     test_db.commit()
 
-    return video_id_str, owner_key
+    return video_id, owner_key  # Return UUID object
 
 
 class TestGetSegments:
@@ -65,12 +66,12 @@ class TestGetSegments:
         """Should return segments for existing video_id owned by requester"""
         video_id, owner_key = video_with_segments
         response = client.get(
-            f"/api/segments/{video_id}",
+            f"/api/segments/{str(video_id)}",  # Convert UUID → str at API boundary
             headers={"X-Owner-Key": owner_key},
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["video_id"] == video_id
+        assert data["video_id"] == str(video_id)  # API returns string
         assert len(data["segments"]) == 2
         assert data["segments"] == sample_segments
 
@@ -97,14 +98,14 @@ class TestPutSegments:
 
     def test_update_existing_segments(self, client, test_db, test_video_and_owner_key):
         """Should replace segments for existing video_id in the database"""
-        video_id, owner_key = test_video_and_owner_key
+        video_id, owner_key = test_video_and_owner_key  # UUID object
         new_segments = [
             {"id": 0, "start": 0.0, "end": 3.0, "text": "Updated first"},
             {"id": 1, "start": 3.0, "end": 6.0, "text": "Updated second"},
         ]
         
         response = client.put(
-            f"/api/segments/{video_id}",
+            f"/api/segments/{str(video_id)}",  # Convert UUID → str at API boundary
             json={"segments": new_segments},
             headers={"X-Owner-Key": owner_key},
         )
@@ -112,11 +113,10 @@ class TestPutSegments:
         data = response.json()
         assert data["segments"] == new_segments
 
-        # Verify persistence in database
-        video_uuid = uuid.UUID(video_id)
+        # Verify persistence in database (use UUID internally)
         rows = (
             test_db.query(SegmentRow)
-            .filter(SegmentRow.video_id == video_uuid)
+            .filter(SegmentRow.video_id == video_id)  # Use UUID internally
             .order_by(SegmentRow.id)
             .all()
         )
@@ -144,7 +144,7 @@ class TestPutSegments:
             {"start": 0.0},  # Missing 'end' and 'text'
         ]
         response = client.put(
-            f"/api/segments/{video_id}",
+            f"/api/segments/{str(video_id)}",  # Convert UUID → str at API boundary
             json={"segments": invalid_segments},
             headers={"X-Owner-Key": owner_key},
         )
@@ -157,7 +157,7 @@ class TestPutSegments:
             {"id": 0, "start": 5.0, "end": 2.0, "text": "Invalid timing"},
         ]
         response = client.put(
-            f"/api/segments/{video_id}",
+            f"/api/segments/{str(video_id)}",  # Convert UUID → str at API boundary
             json={"segments": invalid_segments},
             headers={"X-Owner-Key": owner_key},
         )
@@ -169,14 +169,14 @@ class TestSegmentsRoundTrip:
 
     def test_round_trip(self, client, test_db, test_video_and_owner_key):
         """Full round-trip test of segments persistence via API + database"""
-        video_id, owner_key = test_video_and_owner_key
+        video_id, owner_key = test_video_and_owner_key  # UUID object
         initial_segments = [
             {"id": 0, "start": 0.0, "end": 1.5, "text": "Initial text"},
         ]
         
         # PUT (create)
         response = client.put(
-            f"/api/segments/{video_id}",
+            f"/api/segments/{str(video_id)}",  # Convert UUID → str at API boundary
             json={"segments": initial_segments},
             headers={"X-Owner-Key": owner_key},
         )
@@ -188,7 +188,7 @@ class TestSegmentsRoundTrip:
             {"id": 0, "start": 0.0, "end": 2.0, "text": "Updated text"},
         ]
         response = client.put(
-            f"/api/segments/{video_id}",
+            f"/api/segments/{str(video_id)}",  # Convert UUID → str at API boundary
             json={"segments": updated_segments},
             headers={"X-Owner-Key": owner_key},
         )
@@ -196,7 +196,7 @@ class TestSegmentsRoundTrip:
         
         # GET again to verify
         response = client.get(
-            f"/api/segments/{video_id}",
+            f"/api/segments/{str(video_id)}",  # Convert UUID → str at API boundary
             headers={"X-Owner-Key": owner_key},
         )
         assert response.status_code == 200

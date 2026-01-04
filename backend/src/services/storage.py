@@ -119,7 +119,12 @@ def find_uploaded_video(video_id: str) -> Path:
     Raises:
         HTTPException: If video not found
     """
-    matches = list(UPLOAD_DIR.glob(f"{video_id}.*"))
+    # Access UPLOAD_DIR from the module to ensure we get the current (potentially patched) value
+    # This ensures patching works in tests by looking up the variable at runtime
+    import sys
+    storage_module = sys.modules[__name__]
+    upload_dir = getattr(storage_module, 'UPLOAD_DIR', UPLOAD_DIR)
+    matches = list(upload_dir.glob(f"{video_id}.*"))
     if not matches:
         raise HTTPException(
             status_code=404,
