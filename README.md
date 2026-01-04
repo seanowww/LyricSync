@@ -1,101 +1,212 @@
-````markdown
-# Lyrically — AI-Assisted Lyric Sync Tool (MVP)
+# LyricSync
 
-**Lyrically** is an early-stage tool for singers and creators that generates time-aligned lyrics from singing videos using AI.  
-Upload a video → get an editable, synced **lyric timeline** you can preview and export.
+A full-stack web application for automatically transcribing singing videos, synchronizing lyrics with precise timing, and rendering professional lyric videos with customizable subtitles.
 
-This is the first MVP focusing on:
-- **Automatic transcription**
-- **Timing extraction**
-- **Synced preview UI**
-- **Export of timing data**
+## Overview
 
-> Note: Full video rendering with lyrics burned in is planned for future releases.
+LyricSync automates the time-consuming process of creating lyric videos. Upload a singing video, and the application uses AI transcription to generate time-aligned lyrics that can be edited, styled, and burned directly into the video with professional-quality subtitles.
 
----
+## Key Features
 
-## What It Does
+### Video Processing
+- **Automatic Transcription**: AI-powered speech-to-text using Whisper for accurate lyric extraction
+- **Precise Timing**: Automatic alignment of lyrics with video timestamps
+- **Video Upload**: Support for multiple video formats (MP4, MOV, WebM, etc.)
 
-- Accepts audio/video uploads
-- Transcribes vocals using Whisper
-- Generates a simple **timing JSON**
-- Displays synced lyrics with the video
-- Lets users edit text and export timing
+### Lyric Editing
+- **Real-time Preview**: Synchronized playback of video with lyrics
+- **Interactive Timeline**: Edit lyrics and timing with visual feedback
+- **Segment Management**: Add, edit, and delete lyric segments with precise start/end times
 
----
+### Video Rendering
+- **Subtitle Burning**: Render lyrics directly into video using FFmpeg
+- **Customizable Styling**: Full control over font family, size, color, stroke, position, opacity, and rotation
+- **Multiple Font Support**: Arial, Georgia, Helvetica, Inter, Times New Roman with bold/italic variants
+- **Export Options**: Download rendered videos with burned-in subtitles
 
-## Why It Matters
+### User Experience
+- **Modern UI**: Clean, responsive interface built with React and Tailwind CSS
+- **Drag-and-Drop**: Intuitive file upload workflow
+- **Real-time Feedback**: Live preview of styling changes before rendering
 
-Manual lyric syncing for cover videos is tedious and time-consuming.  
-Lyrically reduces hours of manual work to seconds.
+## Screenshots
 
----
+### Upload Screen
+<!-- Add screenshot of the upload interface here -->
+*Screenshot placeholder: Upload screen showing file drag-and-drop area and upload progress*
 
-## MVP Features (Current)
+### Editor Screen
+<!-- Add screenshot of the lyric editor interface here -->
+*Screenshot placeholder: Editor screen showing video player, lyric timeline, and styling controls*
 
-- File upload (web)
-- Whisper transcription integration
-- Timing JSON generation
-- Sync preview of video + lyrics
-- Export as `.srt` or JSON
+## Technology Stack
 
----
+### Backend
+- **Framework**: FastAPI (Python 3.10+)
+- **Database**: PostgreSQL with SQLAlchemy ORM
+- **Transcription**: OpenAI Whisper API
+- **Video Processing**: FFmpeg for subtitle rendering
+- **Testing**: pytest with comprehensive integration and unit tests
+- **Migrations**: Alembic for database schema management
 
-## Stack
+### Frontend
+- **Framework**: React 18 with TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS with custom theme
+- **UI Components**: Radix UI primitives with custom styling
+- **State Management**: React Hooks and Context API
+- **Routing**: React Router
 
-- **Next.js** (frontend + API)
-- **TypeScript**  
-- **Whisper (local or API)** for transcription
-- **HTML5 `<video>`** for playback sync
+### Infrastructure
+- **Database**: PostgreSQL (production), SQLite (testing)
+- **File Storage**: Local filesystem with organized directory structure
+- **API Architecture**: RESTful API with dependency injection
+- **Authentication**: Owner-key based access control
 
----
+## Architecture
 
-## How It Works (Simplified)
+### API Endpoints
 
-1. Upload video
-2. Backend calls Whisper → returns segments
-3. Convert segments → timing JSON
-4. Frontend displays synced lyrics with video
-5. User can edit and export timing
+- `POST /api/transcribe` - Upload and transcribe video
+- `GET /api/video/{video_id}` - Retrieve video file
+- `GET /api/segments/{video_id}` - Get lyric segments for a video
+- `PUT /api/segments/{video_id}` - Update lyric segments
+- `POST /api/burn` - Render video with burned-in subtitles
 
----
+### Database Schema
 
-## Timing JSON (Example)
+- **Videos**: Core video metadata and ownership
+- **Segments**: Time-aligned lyric segments with text and timing
+- **Styles**: Subtitle styling preferences per video
 
-```json
-[
-  { "id": 1, "start": 3.2, "end": 5.4, "text": "I still remember the 3rd of December" },
-  { "id": 2, "start": 5.4, "end": 7.2, "text": "You in your sweater" }
-]
-````
+### Key Design Decisions
 
----
+- **UUID-based Identity**: Consistent UUID usage throughout the stack for video identification
+- **Database-First Segments**: Lyrics stored in database for persistence and consistency
+- **Modular Service Layer**: Separated concerns for transcription, storage, rendering, and authentication
+- **Comprehensive Testing**: In-memory SQLite for fast, isolated test execution
 
-## Roadmap (Next)
+## Getting Started
 
-* `.srt` → FFmpeg render pipeline
-* Style presets and templates
-* Drag-and-drop positioning
-* Full video export (downloadable)
-* Project persistence + accounts
+### Prerequisites
 
----
+- Python 3.10 or higher
+- Node.js 18 or higher
+- PostgreSQL (for production)
+- FFmpeg (for video rendering)
+- OpenAI API key (for transcription)
 
-## Status
+### Backend Setup
 
-**Early MVP — testing phase.**
-Designed to validate core transcription + timing accuracy before building the full lyric video renderer.
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
 
----
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your database URL and API keys
 
-## Feedback & Contributions
+# Run database migrations
+alembic upgrade head
 
-Issues, feedback, and PRs welcome — this is a solo project in active development.
+# Start the development server
+uvicorn src.main:app --reload
+```
 
----
+### Frontend Setup
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### Running Tests
+
+```bash
+# Backend tests
+cd backend
+pytest
+
+# Run specific test suite
+pytest tests/integration/test_burn_api.py -v
+```
+
+## Project Structure
+
+```
+LyricSync/
+├── backend/
+│   ├── src/
+│   │   ├── routes/          # API endpoint handlers
+│   │   ├── services/        # Business logic layer
+│   │   ├── models/          # SQLAlchemy ORM models
+│   │   ├── schemas/         # Pydantic request/response models
+│   │   ├── db/              # Database session management
+│   │   └── utils/           # Helper utilities
+│   ├── tests/               # Comprehensive test suite
+│   │   ├── integration/     # API integration tests
+│   │   └── unit/            # Unit tests
+│   └── alembic/             # Database migrations
+└── frontend/
+    ├── src/
+    │   ├── app/             # React application
+    │   │   ├── components/  # UI components
+    │   │   └── lib/         # API client and utilities
+    │   └── styles/           # CSS and theme files
+    └── public/              # Static assets
+```
+
+## Testing Strategy
+
+The project includes a comprehensive test suite with:
+
+- **Integration Tests**: Full API endpoint testing with in-memory database
+- **Unit Tests**: Isolated component and utility testing
+- **Golden Tests**: Visual regression testing for rendered video output
+- **Test Isolation**: Each test runs with a fresh database instance
+
+Key testing practices:
+- In-memory SQLite for fast test execution
+- Fixture-based test data setup
+- Dependency injection for database mocking
+- Comprehensive coverage of API endpoints
+
+## Development Highlights
+
+### Code Quality
+- Type hints throughout Python codebase
+- TypeScript for type-safe frontend development
+- Consistent code organization and separation of concerns
+- Comprehensive error handling and validation
+
+### Performance
+- Efficient database queries with proper indexing
+- Optimized video processing pipeline
+- Fast test execution with in-memory databases
+- Responsive UI with optimized React rendering
+
+### Security
+- Owner-key based access control
+- Input validation on all API endpoints
+- Secure file upload handling with size limits
+- SQL injection prevention via ORM
+
+## Future Enhancements
+
+- User authentication and multi-user support
+- Cloud storage integration (S3, GCS)
+- Batch processing for multiple videos
+- Advanced subtitle animation effects
+- Project templates and presets
+- Collaborative editing features
 
 ## License
 
-MIT
+MIT License
 
-```
+## Contact
+
+For questions, feedback, or contributions, please open an issue or submit a pull request.
