@@ -20,6 +20,8 @@ body {
   color: var(--text) !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   line-height: 1.7;
+  margin: 0;
+  padding: 0;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -168,38 +170,46 @@ strong {
   font-weight: 600;
 }
 
-/* Override Jekyll theme defaults */
+/* Override Jekyll theme defaults - Remove sidebar, full-width layout */
 .wrapper {
   background-color: var(--bg) !important;
   color: var(--text) !important;
+  max-width: 100% !important;
+  padding: 0 !important;
 }
 
 .site-header {
-  background-color: var(--panel) !important;
-  border-bottom: 1px solid var(--border) !important;
-}
-
-.site-title, .site-title:visited {
-  color: var(--text) !important;
-}
-
-.site-nav .page-link {
-  color: var(--text) !important;
+  display: none !important;
 }
 
 .site-footer {
-  background-color: var(--panel) !important;
-  border-top: 1px solid var(--border) !important;
-  color: var(--muted) !important;
+  display: none !important;
 }
 
 .main-content {
   background-color: var(--bg) !important;
   color: var(--text) !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  padding: 2rem !important;
 }
 
 .page-content {
   background-color: transparent !important;
+  max-width: 100% !important;
+}
+
+/* Hide sidebar if present */
+.sidebar {
+  display: none !important;
+}
+
+/* Full-width content */
+.content {
+  width: 100% !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  padding: 2rem !important;
 }
 
 /* Table styling */

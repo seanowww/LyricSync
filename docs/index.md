@@ -24,10 +24,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   line-height: 1.7;
   margin: 0;
-  padding: 2rem;
-  max-width: 1200px;
-  margin-left: auto;
-  margin-right: auto;
+  padding: 0;
 }
 
 h1 {
@@ -206,40 +203,48 @@ h1 + p a:hover {
   border-bottom-color: transparent;
 }
 
-/* Override Jekyll theme defaults */
+/* Override Jekyll theme defaults - Remove sidebar, full-width layout */
 .wrapper {
   background-color: var(--bg) !important;
   color: var(--text) !important;
+  max-width: 100% !important;
+  padding: 0 !important;
 }
 
 .site-header {
-  background-color: var(--panel) !important;
-  border-bottom: 1px solid var(--border) !important;
-}
-
-.site-title, .site-title:visited {
-  color: var(--text) !important;
-}
-
-.site-nav .page-link {
-  color: var(--text) !important;
+  display: none !important;
 }
 
 .site-footer {
-  background-color: var(--panel) !important;
-  border-top: 1px solid var(--border) !important;
-  color: var(--muted) !important;
+  display: none !important;
 }
 
 /* Ensure all containers use dark theme */
 .main-content {
   background-color: var(--bg) !important;
   color: var(--text) !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  padding: 2rem !important;
 }
 
 /* Fix any white backgrounds from Jekyll */
 .page-content {
   background-color: transparent !important;
+  max-width: 100% !important;
+}
+
+/* Hide sidebar if present */
+.sidebar {
+  display: none !important;
+}
+
+/* Full-width content */
+.content {
+  width: 100% !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  padding: 2rem !important;
 }
 
 /* Table styling */
@@ -287,7 +292,7 @@ table td {
 }
 </style>
 
-# LyricSync
+# LyricSync.
 
 **AI-assisted lyric timing and subtitle rendering for singing videos**
 
@@ -313,13 +318,9 @@ table td {
 
 **Real-time synchronized preview with styling controls.** The preview matches the final burned output pixel-perfectly through PlayRes probing via ffprobe—no calibration constants needed. Edit lyrics, adjust timing, and see changes instantly before rendering.
 
-### Styling System
+### Styling & Rendering
 
-**Full typographic control with deterministic rendering.** Fonts are bundled and referenced via `fontsdir` in FFmpeg, ensuring consistent output across environments. Supports Arial, Georgia, Helvetica, Inter, and Times New Roman with bold/italic variants.
-
-### Export & Rendering
-
-**FFmpeg-based subtitle burning with ASS format.** Segments are converted from JSON to ASS subtitles, then burned into video with precise positioning, opacity, rotation, and stroke controls. Golden snapshot tests ensure style regression safety.
+**Full typographic control with deterministic rendering.** Fonts are bundled and referenced via `fontsdir` in FFmpeg, ensuring consistent output across environments. Supports Arial, Georgia, Helvetica, Inter, and Times New Roman with bold/italic variants. FFmpeg-based subtitle burning with ASS format converts segments from JSON to ASS subtitles, then burns them into video with precise positioning, opacity, rotation, and stroke controls. Golden snapshot tests ensure style regression safety.
 
 ---
 
