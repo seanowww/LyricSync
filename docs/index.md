@@ -30,7 +30,7 @@ body {
 h1 {
   color: var(--text) !important;
   font-weight: 700;
-  font-size: 2.5rem;
+  font-size: 3rem;
   margin-top: 0;
   margin-bottom: 1rem;
   line-height: 1.2;
@@ -106,12 +106,11 @@ pre {
   padding: 1.25rem;
   overflow-x: auto;
   margin: 1.5rem 0;
-  color: var(--text) !important;
 }
 
 pre code {
   background-color: transparent !important;
-  color: var(--text) !important;
+  color: var(--accent) !important;
   border: none;
   padding: 0;
   font-size: 0.9em;
@@ -358,8 +357,6 @@ table td {
 <div class="architecture-diagram">
 ![System Architecture](./assets/architecture.png)
 </div>
-
-*Diagram source: `docs/assets/architecture.puml`. Regenerate with: `plantuml docs/assets/architecture.puml -o docs/assets/`*
 
 ### Backend Components
 
