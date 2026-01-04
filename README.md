@@ -32,12 +32,10 @@ LyricSync automates the time-consuming process of creating lyric videos. Upload 
 ## Screenshots
 
 ### Upload Screen
-<!-- Add screenshot of the upload interface here -->
-*Screenshot placeholder: Upload screen showing file drag-and-drop area and upload progress*
+![Upload screen showing file drag-and-drop area and upload progress](./images/UploadScreen.png)
 
 ### Editor Screen
-<!-- Add screenshot of the lyric editor interface here -->
-*Screenshot placeholder: Editor screen showing video player, lyric timeline, and styling controls*
+![Editor screen showing video player, lyric timeline, and styling controls](./images/EditorScreen.png)
 
 ## Technology Stack
 
