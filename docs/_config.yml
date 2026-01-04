@@ -1,5 +1,7 @@
 title: LyricSync
 description: AI-assisted lyric timing and subtitle rendering for singing videos
+baseurl: "/LyricSync"
+url: "https://seanowww.github.io"
 plugins:
   - jekyll-relative-links
 
