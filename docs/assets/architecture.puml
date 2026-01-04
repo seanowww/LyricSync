@@ -101,6 +101,5 @@ TR --> DB : Save
 API --> RW : Render
 RW --> DB : Read
 RW --> STORE : MP4
-RW ..> API : Complete
 
 @enduml
